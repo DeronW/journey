@@ -54,7 +54,7 @@ POST 请求类型均为 json 数据格式，需要添加 Content-Type: applicati
 返回
 
 ```json
-    {code: 0, errmsg:"", data: [point_id...]}
+{ "code": 0, "errmsg": "", "data": ["point_id..."] }
 ```
 
 #### 删除一个点
