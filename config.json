@@ -1,3 +1,9 @@
 {
-    "postgis": {}
+    "postgis": {
+        "host": "112.126.74.153",
+        "port": 5432,
+        "database": "postgres",
+        "user": "postgres",
+        "password": "mysecretpassword"
+    }
 }

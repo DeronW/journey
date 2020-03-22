@@ -4,7 +4,15 @@ services:
         build: .
         ports:
             - "3000:3000"
+        depends_on:
+            - "postgis"
+        logvolume01: {}
     postgis:
-        image: postgis/postgis
-volumes:
-    logvolume01: {}
+        image: postgis/postgis:12-3.0-alpine
+        restart: always
+        ports:
+            - "5432:5432"
+        environment:
+            POSTGRES_PASSWORD: postgrespassword
+            POSTGRES_USER: postgres
+            POSTGRES_DB: postgres

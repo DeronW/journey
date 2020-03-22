@@ -16,9 +16,7 @@ const logger = log4js.getLogger("app");
 app.use(bodyParser.json()); // for parsing application/json
 app.use(log4js.connectLogger(logger));
 
-app.get("/", function(req, res) {
-    res.send(`OK, ${new Date()}`);
-});
+app.get("/", (req, res) => res.send(`OK, ${new Date()}`));
 
 app.listen(3000);
 logger.info("Server started");

@@ -1,10 +1,12 @@
 # tortuous
 
-### 技术选型
+### Dev FAQ
 
--   Docker，容器化技术，服务运行环境[https://docs.docker.com/]。
--   PostGIS，地理位置索引数据库，存储、检索坐标点及路线涵盖地理范围[http://www.postgis.org/]。
--   Flask，Web 服务框架，提供对外 API 接口 [https://palletsprojects.com/p/flask/]。
+PostGIS Docker: https://hub.docker.com/r/postgis/postgis
+
+### Env tools
+
+Docker: 19.03.5
 
 ### 数据库设计
 
