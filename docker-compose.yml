@@ -8,6 +8,11 @@ services:
         depends_on:
             - "postgis"
         command: ['./wait-for-it.sh', 'postgis:5432', 'node', 'db.js']
+        # logvolume01: {}
+        environment:
+            POSTGRES_PASSWORD: postgrespassword
+            POSTGRES_USER: postgres
+            POSTGRES_DB: postgres
     postgis:
         image: postgis/postgis:12-3.0-alpine
         # restart: always
