@@ -2,14 +2,15 @@ version: "3"
 services:
     web:
         build: .
+        # restart: always
         ports:
             - "3000:3000"
         depends_on:
             - "postgis"
-        logvolume01: {}
+        command: ['./wait-for-it.sh', 'postgis:5432', 'node', 'db.js']
     postgis:
         image: postgis/postgis:12-3.0-alpine
-        restart: always
+        # restart: always
         ports:
             - "5432:5432"
         environment:
