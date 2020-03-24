@@ -68,17 +68,15 @@ async function createTable() {
     // });
     let sql = [
         `drop table if exists Points`,
-        `drop table if exists China`,
+        `drop table if exists Region`,
         `drop table if exists Setup`,
         `CREATE TABLE Setup ( phase varchar(32), complete bool )`,
         `insert into setup (phase, complete) values ('table', true), ('bundary', false), ('points', false)`,
-        `CREATE TABLE China (
+        `create table region (
             id SERIAL PRIMARY KEY,
-            latitude float, 
-            longitude float,
-            point geometry(POINT,4326)
-        )
-        `,
+            name varchar(32),
+            border geometry(POLYGON, 4326)
+        )`,
         `
         CREATE TABLE Points(
             id SERIAL PRIMARY KEY,
@@ -92,7 +90,7 @@ async function createTable() {
             updated_at timestamp
         )
         `,
-        `create index china_gis_index on china using gist(point)`,
+        `create index region_gis_index on Region using gist(border)`,
         `create index points_gis_index on points using gist(point)`,
         `create index points_tag_jsonb_index on points using gin(tag)`
     ];
@@ -102,12 +100,13 @@ async function createTable() {
 }
 
 async function importChinaBundary() {
-    let points = require("./fixtures/china");
-    await db.none(`delete from China`);
-    let values = points.map(i => `(${i[1]}, ${i[0]}, ST_GeomFromText('POINT(${i[0]} ${i[1]})',4326))`);
-    values = values.join(",");
-    console.log(`insert into China (latitude, longitude, point) values ${values}`)
-    await db.none(`insert into China (latitude, longitude, point) values ${values}`);
+    const points = require("./fixtures/china");
+    let border = points.map(i => `${i[0]} ${i[1]}`);
+    border.push(points[0][0] + " " + points[0][1]);
+    border = border.join(",");
+    await db.none(
+        `insert into Region (name, border) values ('china', ST_GeomFromText('POLYGON((${border}))', 4326))`
+    );
     await db.none(`update Setup set complete=true where phase='bundary'`);
 }
 
@@ -137,7 +136,7 @@ async function importScenicPoints() {
                 rank: parseInt(i.rank),
                 name_en: i.english
             }).replace(/'/g, "''"),
-            point  = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`
+            point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         if (isNaN(lat) || isNaN(lng) || isNaN(i.rank)) return null;
         return `(${source_id}, '${tag}', ${lat}, ${lng}, ${point}, now(), now())`;
     });
@@ -152,10 +151,23 @@ async function importScenicPoints() {
 async function resetAll() {
     await db.none(`drop table if exists Points`);
     await db.none(`drop table if exists Setup`);
-    await db.none(`drop table if exists China`);
+    await db.none(`drop table if exists Region`);
 }
 
-function isExitBorder() {}
+async function isExitBorder(points) {
+    let line = points.map(i => `${i.lng} ${i.lat}`).join(",");
+
+    let r = await db.one(`
+        SELECT ST_Contains(
+            (SELECT border FROM region WHERE name = 'china'), 
+            ST_GeomFromText('LINESTRING(${line})',4326));
+        `);
+    return !r.st_contains;
+}
+// isExitBorder([
+//     { lat: 30, lng: 120 },
+//     { lat: 31, lng: 121 }
+// ]);
 
 module.exports = {
     DATABASE_CONFIG,
