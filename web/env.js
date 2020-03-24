@@ -7,13 +7,7 @@ let {
 } = process.env;
 
 POSTGIS_HOST = "localhost";
-console.log({
-    POSTGIS_HOST,
-    POSTGIS_PORT,
-    POSTGIS_USER,
-    POSTGIS_PASSWORD,
-    POSTGIS_DATABASE
-});
+POSTGIS_PASSWORD = "mysecretpassword";
 
 module.exports = {
     POSTGIS_HOST,

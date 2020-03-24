@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous" />
+
+    <title>ToolKit</title>
+    <style>
+        body {
+            background: gray;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-light bg-light">
+        <span class="navbar-brand mb-0 h2">Map TookKit</span>
+        Server Uptime: {{upTime}}
+    </nav>
+    <br />
+    <div class="container-fluid" id="body">
+        <div class="row">
+            <div class="col-5">
+                <div class="card">
+                    <div class="card-header">
+                        Initialize
+                    </div>
+                    <div class="card-body">
+                        <div class="card-text">
+                            {{#with initialization}}
+
+                            {{#if tableCreated}}
+                            <s> 1. Create Table</s>
+                            {{else}}
+                            1. Create Table
+                            <button class="btn btn-sm btn-link" onClick="createTable()">
+                                Do it</button>
+                            {{/if}}
+                            <br />
+
+                            {{#if chinaBoundaryImported}}
+                            <s> 2. Import China Boundary</s>
+                            {{else}}
+                            2. Import China Boundary
+                            <button class="btn btn-sm btn-link" onClick="importChinaBundary()"> Do it </button>
+                            {{/if}}
+                            <br />
+
+                            {{#if scenicPointsImported}}
+                            <s>3. Import Scenic Points</s>
+                            {{else}}
+                            3. Import Scenic Points
+                            <button class="btn btn-sm btn-link" onClick="importScenicPoints()"> Do it </button>
+                            {{/if}}
+
+                            {{/with}}
+
+                            <br />
+                            <br />
+                            <button class="btn btn-sm btn-danger" onClick="reset()">RESET</button>
+                        </div>
+                    </div>
+                </div>
+
+                <br />
+                <div class="card">
+                    <div class="card-header">
+                        Database
+                    </div>
+                    <div class="card-body">
+                        <div class="card-text">
+                            host: {{database.host}} <br />
+                            port: {{database.port}}<br />
+                            db: {{database.database}}<br />
+                            user: {{database.user}}<br />
+                            pwd: {{database.password}}<br />
+                            connection: {{database.connection}}<br />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+
+                <div class="card">
+                    <div class="card-header">
+                        /aggragate
+                    </div>
+                    <div class="card-body">
+                        <div class="card-title">
+                            Parameters
+                            <button class="btn btn-sm btn-link" onClick="Q1()">Go</button>
+                        </div>
+                        <div class="card-text">
+                            <textarea class="form-control" id="f1" rows="2">
+                                [
+    { "lat": 10, "lng": 20, "radius": 10 },
+    { "lat": 20, "lng": 30, "radius": 10 },
+    { "lat": 30, "lng": 40, "radius": 10 }
+]
+                            </textarea>
+                        </div>
+                        <div class="card-text" id="r1">
+                            &nbsp;
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Optional JavaScript -->
+    <script src="static/toolkit.js"></script>
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
+        crossorigin="anonymous"></script>
+</body>

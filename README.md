@@ -203,3 +203,14 @@ TODO
 -   [ ] 测试结果
 -   [ ] 安装说明文档
 -   [ ] 项目人工交接
+
+### Reference
+
+GIS: https://postgis.net/docs/manual-3.0/using_postgis_dbmanagement.html#Geography_Basics
+
+大地坐标系 4326
+http://epsg.io/4326
+
+
+在线地图使用的坐标系 3857 
+http://epsg.io/3857 伪墨卡托投影

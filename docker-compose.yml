@@ -14,7 +14,7 @@ services:
             POSTGRES_USER: postgres
             POSTGRES_DB: postgres
     postgis:
-        image: postgis/postgis:12-3.0-alpine
+        image: postgis/postgis:11-3.0-alpine
         # restart: always
         ports:
             - "5432:5432"
