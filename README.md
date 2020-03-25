@@ -22,7 +22,6 @@ Points 表
 | longitude   | float    | 经度               |
 | created_at  | time     | 创建时间           |
 | updated_at  | time     | 更新时间           |
-| deleted_at  | time     | 标记删除的时间     |
 
 Bundary 表
 
@@ -211,6 +210,11 @@ GIS: https://postgis.net/docs/manual-3.0/using_postgis_dbmanagement.html#Geograp
 大地坐标系 4326
 http://epsg.io/4326
 
-
-在线地图使用的坐标系 3857 
+在线地图使用的坐标系 3857
 http://epsg.io/3857 伪墨卡托投影
+
+### Demo Deploy
+
+docker run --name gis -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgis/postgis:11-3.0-alpine
+
+curl --header "Content-Type: application/json" --request POST --data '[ { "lat": 30, "lng": 120 }, { "lat": 33, "lng": 100 } ]' http://localhost:3000/aggregate

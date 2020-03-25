@@ -1,9 +1,8 @@
 const ENV = require("./env");
 const pgp = require("pg-promise")();
-const log4js = require("log4js");
 const fs = require("fs");
 const csv = require("fast-csv");
-const logger = log4js.getLogger("db");
+const logger = require("./getlogger")("db");
 
 const DATABASE_CONFIG = {
     host: ENV.POSTGIS_HOST,
@@ -13,7 +12,17 @@ const DATABASE_CONFIG = {
     password: ENV.POSTGIS_PASSWORD
 };
 
-const db = pgp(DATABASE_CONFIG);
+let db = pgp(DATABASE_CONFIG);
+
+(async function connect() {
+    try {
+        let r = await db.one("select now()");
+        logger.info(`connect postgis success [${r.now}]`);
+    } catch (e) {
+        logger.info(`connect postgis error:${JSON.stringify(e)}, retrying...`);
+        setTimeout(connect, 3000);
+    }
+})();
 
 const { QueryResultError, queryResultErrorCode } = pgp.errors;
 
@@ -60,12 +69,6 @@ async function querySetup() {
 }
 
 async function createTable() {
-    // return db.tx("my-transaction", async t => {
-    //     t.none(`
-    //     drop table points
-
-    //     `);
-    // });
     let sql = [
         `drop table if exists Points`,
         `drop table if exists Region`,
@@ -85,7 +88,7 @@ async function createTable() {
             tag jsonb,
             latitude float,
             longitude float,
-            point geometry(POINT,4326),
+            location geometry(POINT,4326),
             created_at timestamp,
             updated_at timestamp
         )
@@ -143,7 +146,7 @@ async function importScenicPoints() {
     values = values.filter(i => !!i).join(",");
 
     await db.none(`insert into Points (
-        source_id, tag, latitude, longitude, point, created_at, updated_at
+        source_id, tag, latitude, longitude, location, created_at, updated_at
     ) values ${values}`);
     await db.none(`update Setup set complete=true where phase='points'`);
 }
@@ -164,10 +167,6 @@ async function isExitBorder(points) {
         `);
     return !r.st_contains;
 }
-// isExitBorder([
-//     { lat: 30, lng: 120 },
-//     { lat: 31, lng: 121 }
-// ]);
 
 module.exports = {
     DATABASE_CONFIG,

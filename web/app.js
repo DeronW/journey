@@ -2,16 +2,12 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const log4js = require("log4js");
 const path = require("path");
+const CHINA_BUNDARY = require("./fixtures/china");
 
 const app = express();
 const db = require("./db");
 
-log4js.configure({
-    appenders: { console: { type: "console" } },
-    categories: { default: { appenders: ["console"], level: "info" } }
-});
-
-const logger = log4js.getLogger("app");
+const logger = require("./getlogger")("app");
 const UP_TIME = new Date();
 
 app.set("views", "./views");
@@ -66,23 +62,24 @@ app.get("/admin/reset-all", async (req, res) => {
     res.json({ code: 0 });
 });
 
-app.post("/aggregate", async (req, res) => {
-    console.log(req.body);
-    let data = {},
-        errmsg = "";
-    let form = req.body,
-        points;
+app.get("/admin/bundary/china", (req, res) => {
+    res.json({ code: 0, data: CHINA_BUNDARY });
+});
 
-    for (let i = 0; i < points.length; i++) {
-        let p = points[i];
-        if (isNaN(p.lat) || isNaN(p.lng))
-            return res.json({ code: 400, data, errmsg: "wrong points" });
-        points.push({ latitude: p.lat, lng: p.longitude, radius: p.radius || 10 });
+app.post("/aggregate", async (req, res) => {
+    let form = req.body,
+        points = [];
+
+    for (let i = 0; i < form.length; i++) {
+        let { lat, lng, radius = 10 } = form[i];
+        if (isNaN(lat) || isNaN(lng)) return res.json({ code: 400, data, errmsg: "wrong points" });
+        points.push({ lat, lng, radius });
     }
 
-    db.isExitBorder(points);
+    if (points == null) return res.json({ code: 400, data: null, errmsg: "" });
+    let exitedBorder = await db.isExitBorder(points);
 
-    res.json({ code: 0, data, errmsg });
+    res.json({ code: 0, data: { exitedBorder }, errmsg: "" });
 });
 
 const PORT = 3000;

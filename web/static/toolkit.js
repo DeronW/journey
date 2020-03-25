@@ -38,15 +38,74 @@ function readyToRefresh() {
     write(30);
 }
 
+let currentPolyline;
+
 function Q1() {
-    let data = JSON.parse($("#f1").val())
-    console.log(data)
-    $.post(
-        "/aggregate",
-        data,
-        function(data) {
-            $("#r1").text(JSON.stringify(data.data));
-        },
-        "json"
-    );
+    let points;
+    try {
+        points = JSON.parse($("#f1").val());
+    } catch (e) {
+        $("#r1").text(JSON.stringify(e));
+        return;
+    }
+    console.log(points);
+
+    // $.post(
+    //     "/aggregate",
+    //     JSON.stringify(points),
+    //     function(data) {
+    //         $("#r1").text(JSON.stringify(data.data));
+    //     },
+    //     "json"
+    // );
+    $.ajax({
+        url: "/aggregate",
+        method: "post",
+        contentType: "application/json",
+        data: JSON.stringify(points),
+        dataType: "json",
+        success: function(data) {
+            console.log(data);
+        }
+    });
+
+    map.removeOverlay(currentPolyline);
+    currentPolyline = drawPolyline(points);
 }
+
+let map;
+
+function initMap() {
+    map = new BMap.Map("map", {
+        enableBizAuthLogo: false
+    });
+    map.enableScrollWheelZoom(true);
+    // 创建点坐标
+    map.centerAndZoom(new BMap.Point(116.404, 39.915), 5);
+    // 初始化地图，设置中心点坐标和地图级别
+
+    $.getJSON("/admin/bundary/china", data => {
+        let line = data.data.map(i => new BMap.Point(i[0], i[1]));
+        let polyline = new BMap.Polyline(line, {
+            strokeColor: "blue",
+            strokeWeight: 3,
+            strokeOpacity: 0.5
+        });
+        map.addOverlay(polyline);
+    });
+}
+
+function drawPolyline(points) {
+    let line = points.map(i => new BMap.Point(i.lng, i.lat));
+    let polyline = new BMap.Polyline(line, {
+        strokeColor: "green",
+        strokeWeight: 3,
+        strokeOpacity: 0.5
+    });
+    map.addOverlay(polyline);
+    return line;
+}
+
+$(function() {
+    initMap();
+});
