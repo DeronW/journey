@@ -1,0 +1,17 @@
+version: "3"
+services:
+    web:
+        image: delongw/tortuous:0.1
+        # restart: always
+        ports: "3000:3000"
+        depends_on:
+            - "postgis"
+        command: ["./wait-for-it.sh", "postgis:5432", "--", "npm", "start"]
+        network_mode: "host"
+        env_file: postgres.env
+    postgis:
+        image: postgis/postgis:11-3.0-alpine
+        network_mode: "host"
+        # restart: always
+        ports: "5432:5432"
+        env_file: postgres.env

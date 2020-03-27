@@ -5,11 +5,11 @@ const csv = require("fast-csv");
 const logger = require("./getlogger")("db");
 
 const DATABASE_CONFIG = {
-    host: ENV.POSTGIS_HOST,
-    port: ENV.POSTGIS_PORT,
-    database: ENV.POSTGIS_DATABASE,
-    user: ENV.POSTGIS_USER,
-    password: ENV.POSTGIS_PASSWORD
+    host: ENV.POSTGIS.HOST,
+    port: ENV.POSTGIS.PORT,
+    database: ENV.POSTGIS.DATABASE,
+    user: ENV.POSTGIS.USER,
+    password: ENV.POSTGIS.PASSWORD
 };
 
 let db = pgp(DATABASE_CONFIG);

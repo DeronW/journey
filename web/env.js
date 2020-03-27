@@ -1,18 +1,17 @@
 let {
-    POSTGIS_HOST = "postgis",
-    POSTGIS_PORT = 5432,
-    POSTGIS_USER = "postgres",
-    POSTGIS_PASSWORD = "mysecretpassword",
-    POSTGIS_DATABASE = "postgres"
+    POSTGRES_HOST = "postgis",
+    POSTGRES_PORT = 5432,
+    POSTGRES_USER = "postgres",
+    POSTGRES_PASSWORD = "mysecretpassword",
+    POSTGRES_DB = "postgres"
 } = process.env;
 
-POSTGIS_HOST = "localhost";
-POSTGIS_PASSWORD = "mysecretpassword";
-
 module.exports = {
-    POSTGIS_HOST,
-    POSTGIS_PORT,
-    POSTGIS_USER,
-    POSTGIS_PASSWORD,
-    POSTGIS_DATABASE
+    POSTGIS: {
+        HOST: POSTGRES_HOST,
+        PORT: POSTGRES_PORT,
+        DATABASE: POSTGRES_DB,
+        USER: POSTGRES_USER,
+        PASSWORD: POSTGRES_PASSWORD
+    }
 };
