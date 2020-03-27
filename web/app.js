@@ -82,6 +82,6 @@ app.post("/aggregate", async (req, res) => {
     res.json({ code: 0, data: { exitedBorder }, errmsg: "" });
 });
 
-const PORT = 3000;
-app.listen(PORT);
-logger.info(`Server started :${PORT}`);
+app.listen(3000, "0.0.0.0", () => {
+    logger.info(`Server started 0.0.0.0:3000`);
+});
