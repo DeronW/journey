@@ -169,17 +169,18 @@ async function isExitBorder(points) {
 }
 
 function calculateCarpet(points) {
-    let polygon = [];
+    let multiPolygon = [];
     if (points.length == 1) {
         let p = points[0],
             D = points[0].radius || 10;
 
-        return [
+        multiPolygon.push([
             { lat: p.lat - D, lng: p.lng + D },
             { lat: p.lat + D, lng: p.lng + D },
             { lat: p.lat + D, lng: p.lng - D },
             { lat: p.lat - D, lng: p.lng - D }
-        ];
+        ]);
+        return multiPolygon;
     }
 
     for (let i = 1; i < points.length; i++) {
@@ -189,18 +190,21 @@ function calculateCarpet(points) {
             y1 = p1.lng,
             x2 = p2.lat,
             y2 = p2.lng;
-        let alpha = "??";
-        Math.sin();
+        let a = Math.abs(x2 - x1),
+            b = Math.abs(y2 - y1),
+            c = Math.sqrt(a * a + b * b);
+        let sinα = a / c,
+            cosα = b / c;
 
-        polygon.push([
-            { lat: x1.lat - D, lng: p.lng + D },
-            { lat: p.lat + D, lng: p.lng + D },
-            { lat: p.lat + D, lng: p.lng - D },
-            { lat: p.lat - D, lng: p.lng - D }
+        multiPolygon.push([
+            { lat: x1.lat - sinα * D, lng: p.lng + D },
+            // { lat: p.lat + D, lng: p.lng + D },
+            // { lat: p.lat + D, lng: p.lng - D },
+            // { lat: p.lat - D, lng: p.lng - D }
         ]);
     }
 
-    return polygon;
+    return multiPolygon;
 }
 
 async function threadLock() {
