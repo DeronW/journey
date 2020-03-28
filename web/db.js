@@ -168,6 +168,41 @@ async function isExitBorder(points) {
     return !r.st_contains;
 }
 
+function calculateCarpet(points) {
+    let polygon = [];
+    if (points.length == 1) {
+        let p = points[0],
+            D = points[0].radius || 10;
+
+        return [
+            { lat: p.lat - D, lng: p.lng + D },
+            { lat: p.lat + D, lng: p.lng + D },
+            { lat: p.lat + D, lng: p.lng - D },
+            { lat: p.lat - D, lng: p.lng - D }
+        ];
+    }
+
+    for (let i = 1; i < points.length; i++) {
+        let p1 = points[i - 1],
+            p2 = points[i],
+            x1 = p1.lat,
+            y1 = p1.lng,
+            x2 = p2.lat,
+            y2 = p2.lng;
+        let alpha = "??";
+        Math.sin();
+
+        polygon.push([
+            { lat: x1.lat - D, lng: p.lng + D },
+            { lat: p.lat + D, lng: p.lng + D },
+            { lat: p.lat + D, lng: p.lng - D },
+            { lat: p.lat - D, lng: p.lng - D }
+        ]);
+    }
+
+    return polygon;
+}
+
 async function threadLock() {
     let r = await db.one("select now()");
     let t = await new Promise(r => setTimeout(r, 2000));
