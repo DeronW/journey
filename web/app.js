@@ -80,11 +80,10 @@ app.post("/aggregate", async (req, res) => {
     let exitedBorder = await db.isExitBorder(points);
     await db.threadLock(Math.random() * 5);
     let multiPolygon = db.calculateCarpet(points)
-    let POIs = db.queryPOIs(points)
-    console.log(POIs)
-
-    logger.debug(JSON.stringify(form) + ' =>'+JSON.stringify(data))
-    res.json({ code: 0, data: { exitedBorder }, errmsg: "" });
+    //let POIs = db.queryPOIs(points)
+    //console.log(POIs)
+    //logger.debug(JSON.stringify(form) + ' =>'+JSON.stringify(data))
+    res.json({ code: 0, data: { exitedBorder, multiPolygon }, errmsg: "" });
 });
 
 app.listen(3000, "0.0.0.0", () => {

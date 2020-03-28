@@ -94,7 +94,7 @@ async function createTable() {
         )
         `,
         `create index region_gis_index on Region using gist(border)`,
-        `create index points_gis_index on points using gist(point)`,
+        `create index points_gis_index on points using gist(location)`,
         `create index points_tag_jsonb_index on points using gin(tag)`
     ];
     for (let i = 0; i < sql.length; i++) {
@@ -226,8 +226,11 @@ async function queryPOIs(points){
          'LINESTRING(${line})'
         ), 1000, 'endcap=round join=round');
         `);
+	console.log(JSON.stringify(r))
     return r;
 }
+
+//console.log(queryPOIs([{lat: 30, lng: 120}, {lat: 31, lng:121}]))
 
 async function threadLock(seconds) {
     let r = await db.one("select now()");
