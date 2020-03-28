@@ -210,6 +210,9 @@ https://postgis.net/docs/manual-3.0/using_postgis_dbmanagement.html#Geography_Ba
 PostGIS ST_* functions
 https://postgis.net/docs/manual-1.5/ch08.html
 
+Core query function, ST_Buffer
+https://postgis.net/docs/manual-1.5/ST_Buffer.html
+
 大地坐标系 4326
 http://epsg.io/4326
 

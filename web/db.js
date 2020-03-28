@@ -14,15 +14,15 @@ const DATABASE_CONFIG = {
 
 let db = pgp(DATABASE_CONFIG);
 
-(async function connect() {
-    try {
-        let r = await db.one("select now()");
-        logger.info(`connect postgis success [${r.now}]`);
-    } catch (e) {
-        logger.info(`connect postgis error:${JSON.stringify(e)}, retrying...`);
-        setTimeout(connect, 3000);
-    }
-})();
+// (async function connect() {
+//     try {
+//         let r = await db.one("select now()");
+//         logger.info(`connect postgis success [${r.now}]`);
+//     } catch (e) {
+//         logger.info(`connect postgis error:${JSON.stringify(e)}, retrying...`);
+//         setTimeout(connect, 3000);
+//     }
+// })();
 
 const { QueryResultError, queryResultErrorCode } = pgp.errors;
 
@@ -170,46 +170,68 @@ async function isExitBorder(points) {
 
 function calculateCarpet(points) {
     let multiPolygon = [];
-    if (points.length == 1) {
-        let p = points[0],
-            D = points[0].radius || 10;
 
-        multiPolygon.push([
-            { lat: p.lat - D, lng: p.lng + D },
-            { lat: p.lat + D, lng: p.lng + D },
-            { lat: p.lat + D, lng: p.lng - D },
-            { lat: p.lat - D, lng: p.lng - D }
-        ]);
-        return multiPolygon;
+    function singlePointRect({lat, lng, radius}){
+        let D = radius;
+        return [
+            { lat: lat - D, lng: lng + D },
+            { lat: lat + D, lng: lng + D },
+            { lat: lat + D, lng: lng - D },
+            { lat: lat - D, lng: lng - D }
+        ]
     }
 
     for (let i = 1; i < points.length; i++) {
         let p1 = points[i - 1],
             p2 = points[i],
-            x1 = p1.lat,
-            y1 = p1.lng,
-            x2 = p2.lat,
-            y2 = p2.lng;
-        let a = Math.abs(x2 - x1),
-            b = Math.abs(y2 - y1),
+            D1 = p1.radius,
+            D2 = p2.radius;
+        let a = Math.abs(p2.lat - p1.lat),
+            b = Math.abs(p2.lng - p1.lng),
             c = Math.sqrt(a * a + b * b);
+        if(c == 0) { // c will equal 0 only when p1 equal p2
+            multiPolygon.push(singlePointRect(p1))
+            continue
+        }
         let sinα = a / c,
             cosα = b / c;
 
         multiPolygon.push([
-            { lat: x1.lat - sinα * D, lng: p.lng + D },
-            // { lat: p.lat + D, lng: p.lng + D },
-            // { lat: p.lat + D, lng: p.lng - D },
-            // { lat: p.lat - D, lng: p.lng - D }
+            { lat: p1.lat + cosα * D1, lng: p1.lng - sinα * D1 },
+            { lat: p2.lat + cosα * D2, lng: p2.lng - sinα * D2 },
+            { lat: p2.lat - cosα * D2, lng: p2.lng + sinα * D2 },
+            { lat: p1.lat - cosα * D1, lng: p2.lng + sinα * D1 }
         ]);
     }
+
+    if(points.length == 1)
+        multiPolygon.push(singlePointRect(points[0]))
 
     return multiPolygon;
 }
 
-async function threadLock() {
+// console.log(calculateCarpet([{lat: 20, lng:20}]))
+
+// console.log(calculateCarpet([{lat: 20, lng:20}, {lat: 20, lng:20}]))
+// console.log(calculateCarpet([{lat: 20, lng:20}, {lat: 30, lng:30}]))
+// console.log(calculateCarpet(
+//     [{lat: 20, lng:20}, {lat: 30, lng:30},{lat: 35, lng: 25}]))
+
+async function queryPOIs(points){
+    let line = points.map(i => `${i.lng} ${i.lat}`).join(",");
+
+    let r = await db.many(`
+    SELECT ST_Buffer(
+        ST_GeomFromText(
+         'LINESTRING(${line})'
+        ), 1000, 'endcap=round join=round');
+        `);
+    return r;
+}
+
+async function threadLock(seconds) {
     let r = await db.one("select now()");
-    let t = await new Promise(r => setTimeout(r, 2000));
+    let t = await new Promise(r => setTimeout(r, seconds * 1000));
     return [r, t];
 }
 
@@ -222,5 +244,7 @@ module.exports = {
     querySetup,
     resetAll,
     isExitBorder,
-    threadLock
+    threadLock,
+    calculateCarpet,
+    queryPOIs
 };
