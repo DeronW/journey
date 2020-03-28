@@ -168,6 +168,12 @@ async function isExitBorder(points) {
     return !r.st_contains;
 }
 
+async function threadLock() {
+    let r = await db.one("select now()");
+    let t = await new Promise(r => setTimeout(r, 2000));
+    return [r, t];
+}
+
 module.exports = {
     DATABASE_CONFIG,
     testConnection,
@@ -176,5 +182,6 @@ module.exports = {
     importChinaBundary,
     querySetup,
     resetAll,
-    isExitBorder
+    isExitBorder,
+    threadLock
 };

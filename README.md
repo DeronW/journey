@@ -25,12 +25,11 @@ Points 表
 
 Bundary 表
 
-| 字段名    | 类型     | 用途     |
-| --------- | -------- | -------- |
-| id        | 自增主键 |          |
-| laitude   | float    | 纬度     |
-| longitude | float    | 经度     |
-| postcode  | int      | 地区编号 |
+| 字段名   | 类型     | 用途 |
+| -------- | -------- | ---- |
+| id       | 自增主键 |      |
+| name     | string   | 名称 |
+| location | polygno  | 范围 |
 
 ### 接口文档
 
@@ -161,9 +160,9 @@ TODO
 ### Task List
 
 -   [ ] PostGIS
-    -   [ ] Setup & Table initialize
+    -   [x] Setup & Table initialize
     -   [ ] Polygon query
-    -   [ ] Fixtures import, China boundary & Points
+    -   [x] Fixtures import, China boundary & Points
 -   [ ] API
     -   [ ] aggragate
     -   [ ] list
@@ -174,11 +173,11 @@ TODO
     -   [ ] logging
 -   [ ] Operation
     -   [ ] Docker Compose
-    -   [ ] Docker Startup
+    -   [x] Docker Startup
     -   [ ] Deployment Shell
     -   [ ] Scale Up
 -   [ ] Dashboard
-    -   [ ] map preview
+    -   [x] map preview
     -   [ ] point CRUD
     -   [ ] upload CSV
 -   [ ] Test
@@ -205,7 +204,11 @@ TODO
 
 ### Reference
 
-GIS: https://postgis.net/docs/manual-3.0/using_postgis_dbmanagement.html#Geography_Basics
+GIS type
+https://postgis.net/docs/manual-3.0/using_postgis_dbmanagement.html#Geography_Basics
+
+PostGIS ST_* functions
+https://postgis.net/docs/manual-1.5/ch08.html
 
 大地坐标系 4326
 http://epsg.io/4326
@@ -213,8 +216,3 @@ http://epsg.io/4326
 在线地图使用的坐标系 3857
 http://epsg.io/3857 伪墨卡托投影
 
-### Demo Deploy
-
-docker run --name gis -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgis/postgis:11-3.0-alpine
-
-curl --header "Content-Type: application/json" --request POST --data '[ { "lat": 30, "lng": 120 }, { "lat": 33, "lng": 100 } ]' http://localhost:3000/aggregate

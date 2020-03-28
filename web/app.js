@@ -78,6 +78,7 @@ app.post("/aggregate", async (req, res) => {
 
     if (points == null) return res.json({ code: 400, data: null, errmsg: "" });
     let exitedBorder = await db.isExitBorder(points);
+    await db.threadLock();
 
     res.json({ code: 0, data: { exitedBorder }, errmsg: "" });
 });
