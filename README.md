@@ -159,9 +159,9 @@ TODO
 
 ### Task List
 
--   [ ] PostGIS
+-   [x] PostGIS
     -   [x] Setup & Table initialize
-    -   [ ] Polygon query
+    -   [x] Polygon query
     -   [x] Fixtures import, China boundary & Points
 -   [ ] API
     -   [ ] aggragate
@@ -172,10 +172,10 @@ TODO
     -   [ ] delete
     -   [ ] logging
 -   [ ] Operation
-    -   [ ] Docker Compose
+    -   [x] Docker Compose
     -   [x] Docker Startup
-    -   [ ] Deployment Shell
-    -   [ ] Scale Up
+    -   [x] Deployment Shell
+    -   [x] Scale Up
 -   [ ] Dashboard
     -   [x] map preview
     -   [ ] point CRUD
