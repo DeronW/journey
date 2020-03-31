@@ -281,8 +281,11 @@ async function importStateRegion() {
     }
 }
 
+const instance = db;
+
 module.exports = {
     DATABASE_CONFIG,
+    instance,
     testConnection,
     importScenicPoints,
     createTable,

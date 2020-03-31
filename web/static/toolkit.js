@@ -38,6 +38,21 @@ function readyToRefresh() {
     write(30);
 }
 
+function selectedFileChange() {
+    var file = document.getElementById("fileForUpload").files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.readAsText(file, "UTF-8");
+        let el = document.getElementById("preview");
+        reader.onload = function(evt) {
+            el.innerHTML = evt.target.result;
+        };
+        reader.onerror = function(evt) {
+            el.innerHTML = "error reading file";
+        };
+    }
+}
+
 let currentPolyline;
 
 function Q1() {
@@ -48,16 +63,7 @@ function Q1() {
         $("#r1").text(JSON.stringify(e));
         return;
     }
-    console.log(points);
 
-    // $.post(
-    //     "/aggregate",
-    //     JSON.stringify(points),
-    //     function(data) {
-    //         $("#r1").text(JSON.stringify(data.data));
-    //     },
-    //     "json"
-    // );
     $.ajax({
         url: "/aggregate",
         method: "post",
@@ -66,6 +72,9 @@ function Q1() {
         dataType: "json",
         success: function(data) {
             console.log(data);
+            $("#r1").text(JSON.stringify(data.pois, null, 4));
+            delete data.pois;
+            $("#r2").text(JSON.stringify(data, null, "\t"));
         }
     });
 
@@ -85,7 +94,7 @@ function initMap() {
     // 初始化地图，设置中心点坐标和地图级别
 
     $.getJSON("/admin/bundary/china", data => {
-        let line = data.data.map(i => new BMap.Point(i[0], i[1]));
+        let line = data.map(i => new BMap.Point(i[0], i[1]));
         let polyline = new BMap.Polyline(line, {
             strokeColor: "blue",
             strokeWeight: 3,

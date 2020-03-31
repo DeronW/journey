@@ -28,6 +28,23 @@
             <div class="col-5">
                 <div class="card">
                     <div class="card-header">
+                        Database
+                    </div>
+                    <div class="card-body">
+                        <div class="card-text">
+                            host: {{database.host}} <br />
+                            port: {{database.port}}<br />
+                            db: {{database.database}}<br />
+                            user: {{database.user}}<br />
+                            pwd: {{database.password}}<br />
+                            connection: {{database.connection}}<br />
+                        </div>
+                    </div>
+                </div>
+                <br />
+
+                <div class="card">
+                    <div class="card-header">
                         Initialize
                     </div>
                     <div class="card-body">
@@ -61,30 +78,12 @@
                             {{/with}}
 
                             <br />
-                            <br />
                             <button class="btn btn-sm btn-danger" onClick="reset()">RESET</button>
                         </div>
                     </div>
                 </div>
 
                 <br />
-                <div class="card">
-                    <div class="card-header">
-                        Database
-                    </div>
-                    <div class="card-body">
-                        <div class="card-text">
-                            host: {{database.host}} <br />
-                            port: {{database.port}}<br />
-                            db: {{database.database}}<br />
-                            user: {{database.user}}<br />
-                            pwd: {{database.password}}<br />
-                            connection: {{database.connection}}<br />
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col">
 
                 <div class="card">
                     <div class="card-header">
@@ -92,32 +91,44 @@
                     </div>
                     <div class="card-body">
                         <div class="card-title">
-                            Parameters
-                            <button class="btn btn-sm btn-link" onClick="Q1()">Go</button>
                         </div>
                         <div class="card-text">
                             <textarea class="form-control" id="f1" rows="2">
-                                [
+[
     { "lat": 30, "lng": 120, "radius": 10 },
     { "lat": 31, "lng": 121, "radius": 10 },
     { "lat": 29, "lng": 119, "radius": 10 }
 ]
-                            
                             </textarea>
+                            <br />
+                            <button class="btn btn-info" onClick="Q1()">Go</button>
+                            <br />
                         </div>
+                        <div class="card-text" id="r2">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="col">
+
+                <div class="card">
+                    <div class="card-header">
+                        Demonstrate
+                    </div>
+                    <div class="card-body">
+                        <div id="map" style="height: 600px"></div>
+                    </div>
+                    <div class="card-body">
                         <div class="card-text" id="r1">
-                            &nbsp;
                         </div>
-                        <div class="card-title">
-                            Map Demonstrate
-                        </div>
-                        <div id="map" style="height: 400px"></div>
                     </div>
                 </div>
 
             </div>
         </div>
     </div>
+
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.4.1.min.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" crossorigin="anonymous"></script>

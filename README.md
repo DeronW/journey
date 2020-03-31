@@ -44,11 +44,18 @@ POST 请求类型均为 json 数据格式，需要添加 Content-Type: applicati
 参数
 
 ```json
-[
-    { "lat": 10, "lng": 20, "radius": 10 },
-    { "lat": 20, "lng": 30, "radius": 10 },
-    { "lat": 30, "lng": 40, "radius": 10 }
-]
+{
+    "radius": "", // meters
+    "points": [
+        { "lat": 10, "lng": 20 },
+        { "lat": 20, "lng": 30 },
+        { "lat": 30, "lng": 40 }
+    ],
+    "filter": {
+        "tag_1": "",
+        "tag_2": ""
+    }
+}
 ```
 
 返回
@@ -91,7 +98,19 @@ point id，点的 id；data，Point 信息
 
 参数
 
-    Point 信息
+```json
+{
+    "source_id": 0,
+    "source_type": "new",
+    "tag": {
+        "price": 2
+    },
+    "point": {
+        "lat": 1,
+        "lng": 1
+    }
+}
+```
 
 返回
 
@@ -110,7 +129,7 @@ pageSize=1000page=1
 返回
 
 ```json
-{code: 0, errmsg:"", data: { page: 1, pageSize: 1000, points: <Point 信息列表>, totalPage: 3}}
+{ "pageNum": 1, "pageSize": 1000, "points": "<Point 信息列表>", "totalPage": 3 }
 ```
 
 ##### 查询某一个点
@@ -124,7 +143,7 @@ GET /:id
 返回
 
 ```json
-{code: 0, errmsg:"", data: {point: < Point 信息>}}
+< Point 信息>
 ```
 
 备注，Point 信息见下面数据格式说明
@@ -163,14 +182,14 @@ TODO
     -   [x] Setup & Table initialize
     -   [x] Polygon query
     -   [x] Fixtures import, China boundary & Points
--   [ ] API
-    -   [ ] aggragate
-    -   [ ] list
-    -   [ ] create
-    -   [ ] read
-    -   [ ] update
-    -   [ ] delete
-    -   [ ] logging
+-   [x] API
+    -   [x] aggragate
+    -   [x] list
+    -   [x] create
+    -   [x] read
+    -   [x] update
+    -   [x] delete
+    -   [x] logging
 -   [ ] Operation
     -   [x] Docker Compose
     -   [x] Docker Startup
@@ -207,7 +226,7 @@ TODO
 GIS type
 https://postgis.net/docs/manual-3.0/using_postgis_dbmanagement.html#Geography_Basics
 
-PostGIS ST_* functions
+PostGIS ST\_\* functions
 https://postgis.net/docs/manual-1.5/ch08.html
 
 Core query function, ST_Buffer
@@ -218,4 +237,3 @@ http://epsg.io/4326
 
 在线地图使用的坐标系 3857
 http://epsg.io/3857 伪墨卡托投影
-
