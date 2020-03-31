@@ -2,6 +2,7 @@ const ENV = require("./env");
 const pgp = require("pg-promise")();
 const fs = require("fs");
 const csv = require("fast-csv");
+const xml2js = require("xml2js");
 const logger = require("./getlogger")("db");
 
 const DATABASE_CONFIG = {
@@ -14,15 +15,15 @@ const DATABASE_CONFIG = {
 
 let db = pgp(DATABASE_CONFIG);
 
-// (async function connect() {
-//     try {
-//         let r = await db.one("select now()");
-//         logger.info(`connect postgis success [${r.now}]`);
-//     } catch (e) {
-//         logger.info(`connect postgis error:${JSON.stringify(e)}, retrying...`);
-//         setTimeout(connect, 3000);
-//     }
-// })();
+(async function connect() {
+    try {
+        let r = await db.one("Select now()");
+        logger.info(`Connect Postgis success [${r.now}]`);
+    } catch (e) {
+        logger.info(`Connect Postgis error:${JSON.stringify(e)}, Retrying...`);
+        setTimeout(connect, 3000);
+    }
+})();
 
 const { QueryResultError, queryResultErrorCode } = pgp.errors;
 
@@ -37,12 +38,15 @@ function exist(sql) {
 }
 
 function isNoData(err) {
-    return err instanceof QueryResultError && err.code === queryResultErrorCode.noData;
+    return (
+        err instanceof QueryResultError &&
+        err.code === queryResultErrorCode.noData
+    );
 }
 
 function testConnection() {
     // 测试数据库链接情况
-    return db.one("select now()").then(
+    return db.one("Select now()").then(
         data => data.now,
         err => logger.error(err)
     );
@@ -50,7 +54,7 @@ function testConnection() {
 
 async function querySetup() {
     let hasTable = await exist(
-        `SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'setup'`
+        `Select 1 From pg_tables Where schemaname = 'public' And tablename = 'setup'`
     );
     let steps = {
         tableCreated: false,
@@ -58,11 +62,13 @@ async function querySetup() {
         scenicPointsImported: false
     };
     if (hasTable) {
-        let rows = await db.many("select * from setup");
+        let rows = await db.many("Select * From Setup");
         rows.forEach(row => {
             if (row.phase == "table") steps.tableCreated = row.complete;
-            if (row.phase == "bundary") steps.chinaBoundaryImported = row.complete;
-            if (row.phase == "points") steps.scenicPointsImported = row.complete;
+            if (row.phase == "bundary")
+                steps.chinaBoundaryImported = row.complete;
+            if (row.phase == "points")
+                steps.scenicPointsImported = row.complete;
         });
     }
     return steps;
@@ -70,51 +76,36 @@ async function querySetup() {
 
 async function createTable() {
     let sql = [
-        `drop table if exists Points`,
-        `drop table if exists Region`,
-        `drop table if exists Setup`,
-        `CREATE TABLE Setup ( phase varchar(32), complete bool )`,
-        `insert into setup (phase, complete) values ('table', true), ('bundary', false), ('points', false)`,
-        `create table region (
+        `Create Table Setup ( phase VARCHAR(32), complete bool )`,
+        `Insert Into Setup (phase, complete) Values ('table', true), ('bundary', false), ('points', false)`,
+        `Create Table Region (
             id SERIAL PRIMARY KEY,
-            name varchar(32),
-            border geometry(POLYGON, 4326)
+            code VARCHAR(32) NOT NULL UNIQUE,
+            name VARCHAR(64) NOT NULL UNIQUE,
+            border GEOMETRY(POLYGON, 4326)
         )`,
         `
-        CREATE TABLE Points(
+        CREATE TABLE POI(
             id SERIAL PRIMARY KEY,
-            source_id int not null,
-            source_type varchar(32),
-            tag jsonb,
-            latitude float,
-            longitude float,
-            location geometry(POINT,4326),
-            created_at timestamp,
+            source_id INT NOT NULL,
+            source_type VARCHAR(32),
+            tag JSONB,
+            point GEOMETRY(POINT,4326),
             updated_at timestamp
         )
         `,
-        `create index region_gis_index on Region using gist(border)`,
-        `create index points_gis_index on points using gist(location)`,
-        `create index points_tag_jsonb_index on points using gin(tag)`
+        `Create Index region_gis_index On Region USING GIST(border)`,
+        `Create Index poi_gis_index On POI USING GIST(point)`,
+        `Create Index poi_tag_jsonb_index On POI USING GIN(tag)`
     ];
+    await resetAll();
     for (let i = 0; i < sql.length; i++) {
         await db.none(sql[i]);
     }
 }
 
-async function importChinaBundary() {
-    const points = require("./fixtures/china");
-    let border = points.map(i => `${i[0]} ${i[1]}`);
-    border.push(points[0][0] + " " + points[0][1]);
-    border = border.join(",");
-    await db.none(
-        `insert into Region (name, border) values ('china', ST_GeomFromText('POLYGON((${border}))', 4326))`
-    );
-    await db.none(`update Setup set complete=true where phase='bundary'`);
-}
-
-function readScenicPoints() {
-    return new Promise(function(resolve, reject) {
+async function importScenicPoints() {
+    let rows = await new Promise(function(resolve, reject) {
         let rows = [];
         fs.createReadStream(`${__dirname}/fixtures/points.csv`)
             .pipe(csv.parse({ headers: true }))
@@ -124,12 +115,9 @@ function readScenicPoints() {
                 resolve(rows);
             });
     });
-}
 
-async function importScenicPoints() {
-    let rows = await readScenicPoints();
+    await db.none(`Delete From POI`);
 
-    await db.none(`delete from Points`);
     let values = rows.map(i => {
         let source_id = parseInt(i.scenic_id),
             lat = parseFloat(i.lat),
@@ -141,44 +129,52 @@ async function importScenicPoints() {
             }).replace(/'/g, "''"),
             point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         if (isNaN(lat) || isNaN(lng) || isNaN(i.rank)) return null;
-        return `(${source_id}, '${tag}', ${lat}, ${lng}, ${point}, now(), now())`;
+        return `(${source_id}, '${tag}', ${point}, now())`;
     });
     values = values.filter(i => !!i).join(",");
 
-    await db.none(`insert into Points (
-        source_id, tag, latitude, longitude, location, created_at, updated_at
-    ) values ${values}`);
-    await db.none(`update Setup set complete=true where phase='points'`);
+    await db.none(`Insert Into POI (
+        source_id, tag, point, updated_at
+    ) Values ${values}`);
+    await db.none(`Update Setup Set complete=true Where phase='points'`);
 }
 
 async function resetAll() {
-    await db.none(`drop table if exists Points`);
-    await db.none(`drop table if exists Setup`);
-    await db.none(`drop table if exists Region`);
+    await db.none("Drop Table If Exists POI");
+    await db.none("Drop Table If Exists Region");
+    await db.none("Drop Table If Exists Setup");
 }
 
 async function isExitBorder(points) {
-    let line = points.map(i => `${i.lng} ${i.lat}`).join(",");
+    let line = points.map(i => `${i.lng} ${i.lat}`).join(","),
+        fragments = points
+            .map(
+                (i, index) =>
+                    `ST_Contains(border, ST_GeomFromText('POINT(${i.lng} ${i.lat})', 4326)) as point${index}`
+            )
+            .join(",");
 
-    let r = await db.one(`
-        SELECT ST_Contains(
-            (SELECT border FROM region WHERE name = 'china'), 
-            ST_GeomFromText('LINESTRING(${line})',4326));
-        `);
-    return !r.st_contains;
+    let sql = `
+        Select 
+            ST_Contains(border, ST_GeomFromText('LINESTRING(${line})',4326)) as line,
+            ${fragments}
+        From (SELECT border FROM region WHERE code = '86') as bundary
+        `;
+    let r = await db.one(sql);
+    return r;
 }
 
 function calculateCarpet(points) {
     let multiPolygon = [];
 
-    function singlePointRect({lat, lng, radius}){
+    function singlePointRect({ lat, lng, radius }) {
         let D = radius;
         return [
             { lat: lat - D, lng: lng + D },
             { lat: lat + D, lng: lng + D },
             { lat: lat + D, lng: lng - D },
             { lat: lat - D, lng: lng - D }
-        ]
+        ];
     }
 
     for (let i = 1; i < points.length; i++) {
@@ -189,9 +185,10 @@ function calculateCarpet(points) {
         let a = Math.abs(p2.lat - p1.lat),
             b = Math.abs(p2.lng - p1.lng),
             c = Math.sqrt(a * a + b * b);
-        if(c == 0) { // c will equal 0 only when p1 equal p2
-            multiPolygon.push(singlePointRect(p1))
-            continue
+        if (c == 0) {
+            // c will equal 0 only when p1 equal p2
+            multiPolygon.push(singlePointRect(p1));
+            continue;
         }
         let sinα = a / c,
             cosα = b / c;
@@ -204,33 +201,32 @@ function calculateCarpet(points) {
         ]);
     }
 
-    if(points.length == 1)
-        multiPolygon.push(singlePointRect(points[0]))
+    if (points.length == 1) multiPolygon.push(singlePointRect(points[0]));
 
     return multiPolygon;
 }
 
-// console.log(calculateCarpet([{lat: 20, lng:20}]))
+async function queryPOIs(points, pageNum = 0, pageSize = 10) {
+    let line = points.map(i => `${i.lng} ${i.lat}`).join(","),
+        offset = pageNum * pageSize,
+        buffer = `ST_Buffer( ST_GeomFromText('LINESTRING(${line})', 4326), 10, 'endcap=flat join=round')`;
 
-// console.log(calculateCarpet([{lat: 20, lng:20}, {lat: 20, lng:20}]))
-// console.log(calculateCarpet([{lat: 20, lng:20}, {lat: 30, lng:30}]))
-// console.log(calculateCarpet(
-//     [{lat: 20, lng:20}, {lat: 30, lng:30},{lat: 35, lng: 25}]))
+    let { polygon } = await db.one(`Select ST_AsText(${buffer}) as polygon`);
 
-async function queryPOIs(points){
-    let line = points.map(i => `${i.lng} ${i.lat}`).join(",");
+    let pois = await db.many(`
+    Select source_id, source_type, tag, ST_AsText(point) as point From (
+        Select *, ST_Contains( ${buffer}, point) from POI ) as a 
+    Where a.st_contains = true
+    Order By id Asc
+    Offset ${offset}
+    Limit ${pageSize}
+    `);
 
-    let r = await db.many(`
-    SELECT ST_Buffer(
-        ST_GeomFromText(
-         'LINESTRING(${line})'
-        ), 1000, 'endcap=round join=round');
-        `);
-	console.log(JSON.stringify(r))
-    return r;
+    return {
+        polygon,
+        pois
+    };
 }
-
-//console.log(queryPOIs([{lat: 30, lng: 120}, {lat: 31, lng:121}]))
 
 async function threadLock(seconds) {
     let r = await db.one("select now()");
@@ -238,12 +234,59 @@ async function threadLock(seconds) {
     return [r, t];
 }
 
+async function importRegionBundary() {
+    await importChinaRegion();
+    await importStateRegion();
+}
+
+async function importChinaRegion() {
+    const points = require("./fixtures/mainland");
+    let border = points.map(i => `${i[0]} ${i[1]}`);
+    border.push(points[0][0] + " " + points[0][1]);
+    border = border.join(",");
+    await db.none(
+        `insert into Region (code, name, border) values ('86', '中国', ST_GeomFromText('POLYGON((${border}))', 4326))`
+    );
+    await db.none(`update Setup set complete=true where phase='bundary'`);
+}
+
+async function importStateRegion() {
+    function importBundary(code, name, ring) {
+        const LIMIT = 200;
+        let points = ring.split(","),
+            juncturePoint = points[0];
+        points.pop(); // MUST drop the last point
+        let step = Math.ceil(points.length / LIMIT);
+        if (step > 1) border = points.filter((_, index) => index % step == 0);
+        else border = points;
+        border.push(juncturePoint);
+        border = border.join(",");
+
+        return db.none(
+            `insert into Region (code, name, border) values ('${code}','${name}', ST_GeomFromText('POLYGON((${border}))', 4326))`
+        );
+    }
+
+    let content = await new Promise((resolve, reject) => {
+        fs.readFile(`${__dirname}/fixtures/bundary.xml`, (err, data) =>
+            err ? reject(err) : resolve(data)
+        );
+    });
+
+    let bundary = await xml2js.parseStringPromise(content);
+    let provinces = bundary.Country.province;
+    for (let i = 0; i < provinces.length; i++) {
+        let { code, name, rings } = provinces[i].$;
+        if (rings) await importBundary(code, name, rings);
+    }
+}
+
 module.exports = {
     DATABASE_CONFIG,
     testConnection,
     importScenicPoints,
     createTable,
-    importChinaBundary,
+    importRegionBundary,
     querySetup,
     resetAll,
     isExitBorder,

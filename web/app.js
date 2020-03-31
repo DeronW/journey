@@ -1,8 +1,9 @@
 const express = require("express");
+require("express-async-errors");
 const bodyParser = require("body-parser");
 const log4js = require("log4js");
 const path = require("path");
-const CHINA_BUNDARY = require("./fixtures/china");
+const MAINLAND_BUNDARY = require("./fixtures/mainland");
 
 const app = express();
 const db = require("./db");
@@ -48,7 +49,7 @@ app.get("/admin/create-table", async (req, res) => {
 });
 
 app.get("/admin/import-china-bundary", async (req, res) => {
-    await db.importChinaBundary();
+    await db.importRegionBundary();
     res.json({ code: 0 });
 });
 
@@ -63,7 +64,7 @@ app.get("/admin/reset-all", async (req, res) => {
 });
 
 app.get("/admin/bundary/china", (req, res) => {
-    res.json({ code: 0, data: CHINA_BUNDARY });
+    res.json({ code: 0, data: MAINLAND_BUNDARY });
 });
 
 app.post("/aggregate", async (req, res) => {
@@ -72,18 +73,15 @@ app.post("/aggregate", async (req, res) => {
 
     for (let i = 0; i < form.length; i++) {
         let { lat, lng, radius = 10 } = form[i];
-        if (isNaN(lat) || isNaN(lng)) return res.json({ code: 400, data, errmsg: "wrong points" });
+        if (isNaN(lat) || isNaN(lng))
+            return res.json({ code: 400, data, errmsg: "wrong points" });
         points.push({ lat, lng, radius });
     }
 
     if (points == null) return res.json({ code: 400, data: null, errmsg: "" });
     let exitedBorder = await db.isExitBorder(points);
-    await db.threadLock(Math.random() * 5);
-    let multiPolygon = db.calculateCarpet(points)
-    //let POIs = db.queryPOIs(points)
-    //console.log(POIs)
-    //logger.debug(JSON.stringify(form) + ' =>'+JSON.stringify(data))
-    res.json({ code: 0, data: { exitedBorder, multiPolygon }, errmsg: "" });
+    let { pois, polygon } = await db.queryPOIs(points);
+    res.json({ code: 0, data: { exitedBorder, pois, polygon }, errmsg: "" });
 });
 
 app.listen(3000, "0.0.0.0", () => {
