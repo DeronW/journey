@@ -53,12 +53,14 @@ function selectedFileChange() {
     }
 }
 
-let currentPolyline;
+let currentPolyline,
+    currentPolygon,
+    Markers = [];
 
 function Q1() {
-    let points;
+    let form;
     try {
-        points = JSON.parse($("#f1").val());
+        form = JSON.parse($("#f1").val());
     } catch (e) {
         $("#r1").text(JSON.stringify(e));
         return;
@@ -68,18 +70,20 @@ function Q1() {
         url: "/aggregate",
         method: "post",
         contentType: "application/json",
-        data: JSON.stringify(points),
+        data: JSON.stringify(form),
         dataType: "json",
         success: function(data) {
-            console.log(data);
+            drawPolygon(data.polygon);
+            drawMarkers(data.pois);
             $("#r1").text(JSON.stringify(data.pois, null, 4));
-            delete data.pois;
-            $("#r2").text(JSON.stringify(data, null, "\t"));
+
+            let info = JSON.parse(JSON.stringify(data));
+            delete info.pois;
+            $("#r2").text(JSON.stringify(info, null, 4));
         }
     });
 
-    map.removeOverlay(currentPolyline);
-    currentPolyline = drawPolyline(points);
+    drawPolyline(form.points);
 }
 
 let map;
@@ -105,14 +109,41 @@ function initMap() {
 }
 
 function drawPolyline(points) {
+    map.removeOverlay(currentPolyline);
     let line = points.map(i => new BMap.Point(i.lng, i.lat));
-    let polyline = new BMap.Polyline(line, {
+    currentPolyline = new BMap.Polyline(line, {
         strokeColor: "green",
         strokeWeight: 3,
         strokeOpacity: 0.5
     });
-    map.addOverlay(polyline);
-    return line;
+    map.addOverlay(currentPolyline);
+}
+
+function drawPolygon(polygonStr) {
+    map.removeOverlay(currentPolygon);
+    let points = polygonStr
+        .substr(9, polygonStr.length - 11)
+        .split(",")
+        .map(i => i.split(" "));
+    points = points.map(i => new BMap.Point(i[0], i[1]));
+
+    currentPolygon = new BMap.Polyline(points, {
+        strokeColor: "blue",
+        strokeWeight: 6,
+        strokeOpacity: 0.5
+    });
+    map.addOverlay(currentPolygon);
+}
+
+function drawMarkers(pois) {
+    Markers.forEach(i => map.removeOverlay(i));
+    Markers = [];
+    for (let i = 0; i < pois.length; i++) {
+        let { lat, lng } = pois[i].point;
+        let point = new BMap.Point(lng, lat);
+        Markers.push(point);
+        map.addOverlay(new BMap.Marker(point));
+    }
 }
 
 $(function() {

@@ -90,7 +90,7 @@ async function createTable() {
             source_id INT NOT NULL,
             source_type VARCHAR(32),
             tag JSONB,
-            point GEOMETRY(POINT,4326),
+            point GEOMETRY(POINT, 4326),
             updated_at timestamp
         )
         `,
@@ -206,21 +206,28 @@ function calculateCarpet(points) {
     return multiPolygon;
 }
 
-async function queryPOIs(points, pageNum = 0, pageSize = 10) {
+async function queryPOIs(points, distance, pageNum, pageSize) {
+    // distance, unit: kilometer
     let line = points.map(i => `${i.lng} ${i.lat}`).join(","),
-        offset = pageNum * pageSize,
-        buffer = `ST_Buffer( ST_GeomFromText('LINESTRING(${line})', 4326), 10, 'endcap=flat join=round')`;
-
-    let { polygon } = await db.one(`Select ST_AsText(${buffer}) as polygon`);
-
+        offset = (pageNum - 1) * pageSize,
+        buffer = `ST_Buffer( 
+            ST_GeomFromText('LINESTRING(${line})', 4326)::geography, 
+            ${distance}, 
+            'endcap=flat join=mitre mitre_limit=1.0')
+        `;
+    let { polygon } = await db.one(` Select ST_AsText(${buffer}) as polygon`);
     let pois = await db.many(`
-    Select source_id, source_type, tag, ST_AsText(point) as point From (
-        Select *, ST_Contains( ${buffer}, point) from POI ) as a 
+    Select source_id, tag, ST_AsText(point) as point From (
+        Select *, ST_Contains(ST_GeomFromText('${polygon}', 4326), point) from POI ) as a 
     Where a.st_contains = true
     Order By id Asc
     Offset ${offset}
     Limit ${pageSize}
     `);
+    pois.map(i => {
+        let t = i.point.substr(6, i.point.length - 6).split(" ");
+        i.point = { lat: parseFloat(t[1]), lng: parseFloat(t[0]) };
+    });
 
     return {
         polygon,
@@ -229,7 +236,7 @@ async function queryPOIs(points, pageNum = 0, pageSize = 10) {
 }
 
 async function threadLock(seconds) {
-    let r = await db.one("select now()");
+    let r = await db.one("Select now()");
     let t = await new Promise(r => setTimeout(r, seconds * 1000));
     return [r, t];
 }
@@ -281,11 +288,51 @@ async function importStateRegion() {
     }
 }
 
-const instance = db;
+const POI = {
+    list: function(pageNum, pageSize) {
+        pageSize = parseInt(pageSize) || 20;
+        pageNum = (parseInt(pageNum) || 1) - 1;
+        return db.many(`
+        Select id, source_id, source_type, tag, ST_AsText(point) as point
+        From POI Order By id Asc Offset ${pageNum * pageSize} Limit ${pageSize}
+        `);
+    },
+    create: function(source_id, source_type, tag, point) {
+        let tagField = JSON.stringify(tag).replace(/'/g, "''");
+        let ST_Point = `ST_GeomFromText('POINT(${point.lng} ${point.lat})', 4326)`;
+        return db
+            .one(
+                `
+        Insert Into POI 
+        (source_id, source_type, tag, point) 
+        Values ( ${source_id}, '${source_type}', '${tagField}', ${ST_Point} ) 
+        Returning id`
+            )
+            .then(r => r.id);
+    },
+    update: function(id, source_id, source_type, tag, point) {
+        let tagField = JSON.stringify(tag).replace(/'/g, "''");
+        let ST_Point = `ST_GeomFromText('POINT(${point.lng} ${point.lat})', 4326)`;
+        return db.none(`
+    Update POI Set
+        source_id=${source_id},
+        source_type='${source_type}',
+        tag='${tagField}',
+        point=${ST_Point}
+    Where id=${id}`);
+    },
+    delete: id => db.none(`Delete From POI Where id=${id}`),
+    info: id =>
+        db.one(
+            `Select *, ST_AsText(point) as plain_point 
+            From POI Where id=${id}`
+        ),
+    count: () => db.one("Select count(*) From POI").then(r => r.count)
+};
 
 module.exports = {
     DATABASE_CONFIG,
-    instance,
+    POI,
     testConnection,
     importScenicPoints,
     createTable,

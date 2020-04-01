@@ -94,17 +94,22 @@
                         </div>
                         <div class="card-text">
                             <textarea class="form-control" id="f1" rows="2">
-[
-    { "lat": 30, "lng": 120, "radius": 10 },
-    { "lat": 31, "lng": 121, "radius": 10 },
-    { "lat": 29, "lng": 119, "radius": 10 }
-]
+{
+    "points": [
+    { "lat": 30, "lng": 120 },
+    { "lat": 31, "lng": 121 },
+    { "lat": 26, "lng": 120 }
+    ],
+    "distance": 10000,
+    "pageSize": 4
+}
                             </textarea>
                             <br />
                             <button class="btn btn-info" onClick="Q1()">Go</button>
-                            <br />
                         </div>
-                        <div class="card-text" id="r2">
+                            <br />
+                        <div class="card-text">
+                            <pre id="r2"></pre>
                         </div>
                     </div>
                 </div>
@@ -120,7 +125,8 @@
                         <div id="map" style="height: 600px"></div>
                     </div>
                     <div class="card-body">
-                        <div class="card-text" id="r1">
+                        <div class="card-text">
+                            <pre id="r1"></pre>
                         </div>
                     </div>
                 </div>
