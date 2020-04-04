@@ -24,12 +24,8 @@ TODO
     -   [x] Polygon query
     -   [x] Fixtures import, China boundary & Points
 -   [x] API
-    -   [ ] aggragate
-    -   [x] poi/list
-    -   [x] poi/create
-    -   [x] poi/read
-    -   [x] poi/update
-    -   [x] poi/delete
+    -   [x] aggragate
+    -   [x] poi/\*
     -   [x] admin/\*
 -   [ ] Dashboard
     -   [x] map preview

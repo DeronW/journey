@@ -1,6 +1,7 @@
 {
     "scripts": {
         "start": "node app.js",
+        "prod": "POSTGRES_HOST=localhost NODE_ENV=production node app.js",
         "dev": "POSTGRES_HOST=localhost nodemon -e 'js' app.js",
         "test": "echo TODO"
     },
@@ -14,6 +15,7 @@
         "log4js": "6.1.0",
         "nodemon": "2.0.2",
         "pg-promise": "10.3.5",
-        "xml2js": "^0.4.23"
-    }
+        "xml2js": "0.4.23"
+    },
+    "devDependencies": {}
 }

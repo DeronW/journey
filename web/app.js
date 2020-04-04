@@ -25,6 +25,11 @@ app.use(
     })
 );
 
+app.use(function(err, req, res, next) {
+    logger.error(err.stack);
+    res.status(500).send("Something broke!");
+});
+
 app.get("/ping", (req, res) => res.send("pong"));
 
 app.get("/toolkit", async (req, res) => {
@@ -54,6 +59,8 @@ app.get("/poi/list", async (req, res) => {
 
 app.post("/poi/create", async (req, res) => {
     let { source_id, source_type, tag, lat, lng } = req.body;
+    if (!source_id || isNaN(lat) || isNaN(lng))
+        return res.status(400).end("wrong params");
     let id = await db.POI.create(source_id, source_type, tag, lat, lng);
     res.json({ id });
 });
@@ -65,13 +72,16 @@ app.post("/poi/:id/delete", async (req, res) => {
 
 app.post("/poi/:id/update", async (req, res) => {
     let { source_id, source_type, tag, lat, lng } = req.body;
-    db.POI.update(source_id, source_type, tag, lat, lng);
+    if (!source_id || isNaN(lat) || isNaN(lng))
+        return res.status(400).end("wrong params");
+    db.POI.update(req.params.id, source_id, source_type, tag, lat, lng);
     return res.end();
 });
 
 app.get("/poi/:id", async (req, res) => {
     let poi = await db.POI.info(req.params.id);
-    res.json(poi);
+    if(poi) res.json(poi);
+    else res.status(404).end()
 });
 
 app.get("/admin/create-table", async (req, res) => {
@@ -106,10 +116,11 @@ app.post("/aggregate", async (req, res) => {
         pageSize = 20
     } = req.body;
 
-    if (points.lenght == 0)
+    if (points.length == 0)
         return res.status(400).end("point should not be empty");
     if (pageNum < 1 || pageSize < 1)
         return res.status(400).end("pageNum & pageSize wrong");
+
     for (let i = 0; i < points.length; i++) {
         let { lat, lng } = points[i];
         if (isNaN(lat) || isNaN(lng))

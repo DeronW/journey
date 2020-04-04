@@ -145,7 +145,7 @@ async function resetAll() {
     await db.none("Drop Table If Exists Setup");
 }
 
-async function isExitBorder(points) {
+function isExitBorder(points) {
     let line = points.map(i => `${i.lng} ${i.lat}`).join(","),
         fragments = points
             .map(
@@ -160,8 +160,7 @@ async function isExitBorder(points) {
             ${fragments}
         From (SELECT border FROM region WHERE code = '86') as bundary
         `;
-    let r = await db.one(sql);
-    return r;
+    return db.one(sql);
 }
 
 function calculateCarpet(points) {
@@ -226,19 +225,16 @@ async function queryPOIs(points, distance, pageNum, pageSize) {
             'endcap=flat join=mitre mitre_limit=1.0')
         `;
     let { polygon } = await db.one(` Select ST_AsText(${buffer}) as polygon`);
+
     let pois = await db.many(`
     Select source_id, tag, ST_AsText(point) as point From (
-        Select *, ST_Contains(ST_GeomFromText('${polygon}', 4326), point) from POI ) as a 
+        Select *, ST_Contains(ST_GeomFromText('${polygon}', 4326), point) From POI ) as a 
     Where a.st_contains = true
     Order By id Asc
     Offset ${offset}
     Limit ${pageSize}
     `);
-    pois.map(i => {
-        replacePointWithLatlng(i);
-        // let t = i.point.substr(6, i.point.length - 6).split(" ");
-        // i.point = { lat: parseFloat(t[1]), lng: parseFloat(t[0]) };
-    });
+    pois.map(i => replacePointWithLatlng(i));
 
     return {
         polygon,
@@ -308,36 +304,45 @@ const POI = {
         pois.map(i => replacePointWithLatlng(i));
         return pois;
     },
-    create: function(source_id, source_type, tag, lat, lng) {
+    create: function(source_id, source_type = null, tag = {}, lat, lng) {
         let tagField = JSON.stringify(tag).replace(/'/g, "''");
         let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         return db
             .one(
                 `
             Insert Into POI 
-            (source_id, source_type, tag, point) 
-            Values ( ${source_id}, '${source_type}', '${tagField}', ${ST_Point} ) 
+            (source_id, source_type, tag, point, updated_at) 
+            Values ( ${source_id}, ${source_type}, '${tagField}', ${ST_Point}, now() ) 
             Returning id`
             )
             .then(r => r.id);
     },
-    update: function(id, source_id, source_type, tag, lat, lng) {
+    update: function(id, source_id, source_type = null, tag = {}, lat, lng) {
         let tagField = JSON.stringify(tag).replace(/'/g, "''");
         let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
+
         return db.none(`
         Update POI Set
             source_id=${source_id},
-            source_type='${source_type}',
+            source_type=${source_type},
             tag='${tagField}',
-            point=${ST_Point}
+            point=${ST_Point},
+            updated_at=now()
         Where id=${id}`);
     },
     delete: id => db.none(`Delete From POI Where id=${id}`),
     info: async function(id) {
-        let poi = await db.one(`
+        let poi = await db
+            .one(
+                `
             Select *, ST_AsText(point) as point 
-            From POI Where id=${id}`);
-        replacePointWithLatlng(poi);
+            From POI Where id=${id}`
+            )
+            .catch(err => {
+                if (isNoData(err)) return false;
+                else throw err;
+            });
+        if (poi) replacePointWithLatlng(poi);
         return poi;
     },
     count: () => db.one("Select count(*) From POI").then(r => parseInt(r.count))
