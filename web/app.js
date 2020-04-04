@@ -43,27 +43,29 @@ app.get("/toolkit", async (req, res) => {
     });
 });
 
-app.get("/list", async (req, res) => {
+app.get("/poi/list", async (req, res) => {
     let { pageNum, pageSize } = req.query;
+    pageSize = parseInt(pageSize) || 20;
+    pageNum = (parseInt(pageNum) || 1) - 1;
     let pois = await db.POI.list(pageNum, pageSize);
-    let total = await POI.count();
-    res.json({ pageNum, pageSize, totalCount: parseInt(total.count), pois });
+    let totalCount = await db.POI.count();
+    res.json({ pageNum, pageSize, totalCount, pois });
 });
 
 app.post("/poi/create", async (req, res) => {
-    let { source_id, source_type, tag, point } = req.body;
-    let id = await db.POI.create(source_id, source_type, tag, point);
+    let { source_id, source_type, tag, lat, lng } = req.body;
+    let id = await db.POI.create(source_id, source_type, tag, lat, lng);
     res.json({ id });
 });
 
-app.get("/poi/:id/delete", async (req, res) => {
+app.post("/poi/:id/delete", async (req, res) => {
     await db.POI.delete(req.params.id);
     res.end();
 });
 
 app.post("/poi/:id/update", async (req, res) => {
-    let { source_id, source_type, tag, point } = req.body;
-    db.POI.update(source_id, source_type, tag, point);
+    let { source_id, source_type, tag, lat, lng } = req.body;
+    db.POI.update(source_id, source_type, tag, lat, lng);
     return res.end();
 });
 

@@ -206,6 +206,16 @@ function calculateCarpet(points) {
     return multiPolygon;
 }
 
+function replacePointWithLatlng(poi) {
+    let fix6 = f => parseInt(parseFloat(f) * 1000000) / 1000000;
+    let t = poi.point.substr(6, poi.point.length - 6).split(" "),
+        lat = fix6(t[1]),
+        lng = fix6(t[0]);
+    delete poi.point;
+    poi.lat = lat;
+    poi.lng = lng;
+}
+
 async function queryPOIs(points, distance, pageNum, pageSize) {
     // distance, unit: kilometer
     let line = points.map(i => `${i.lng} ${i.lat}`).join(","),
@@ -225,8 +235,9 @@ async function queryPOIs(points, distance, pageNum, pageSize) {
     Limit ${pageSize}
     `);
     pois.map(i => {
-        let t = i.point.substr(6, i.point.length - 6).split(" ");
-        i.point = { lat: parseFloat(t[1]), lng: parseFloat(t[0]) };
+        replacePointWithLatlng(i);
+        // let t = i.point.substr(6, i.point.length - 6).split(" ");
+        // i.point = { lat: parseFloat(t[1]), lng: parseFloat(t[0]) };
     });
 
     return {
@@ -289,45 +300,47 @@ async function importStateRegion() {
 }
 
 const POI = {
-    list: function(pageNum, pageSize) {
-        pageSize = parseInt(pageSize) || 20;
-        pageNum = (parseInt(pageNum) || 1) - 1;
-        return db.many(`
+    list: async function(pageNum, pageSize) {
+        let pois = await db.many(`
         Select id, source_id, source_type, tag, ST_AsText(point) as point
         From POI Order By id Asc Offset ${pageNum * pageSize} Limit ${pageSize}
         `);
+        pois.map(i => replacePointWithLatlng(i));
+        return pois;
     },
-    create: function(source_id, source_type, tag, point) {
+    create: function(source_id, source_type, tag, lat, lng) {
         let tagField = JSON.stringify(tag).replace(/'/g, "''");
-        let ST_Point = `ST_GeomFromText('POINT(${point.lng} ${point.lat})', 4326)`;
+        let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         return db
             .one(
                 `
-        Insert Into POI 
-        (source_id, source_type, tag, point) 
-        Values ( ${source_id}, '${source_type}', '${tagField}', ${ST_Point} ) 
-        Returning id`
+            Insert Into POI 
+            (source_id, source_type, tag, point) 
+            Values ( ${source_id}, '${source_type}', '${tagField}', ${ST_Point} ) 
+            Returning id`
             )
             .then(r => r.id);
     },
-    update: function(id, source_id, source_type, tag, point) {
+    update: function(id, source_id, source_type, tag, lat, lng) {
         let tagField = JSON.stringify(tag).replace(/'/g, "''");
-        let ST_Point = `ST_GeomFromText('POINT(${point.lng} ${point.lat})', 4326)`;
+        let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         return db.none(`
-    Update POI Set
-        source_id=${source_id},
-        source_type='${source_type}',
-        tag='${tagField}',
-        point=${ST_Point}
-    Where id=${id}`);
+        Update POI Set
+            source_id=${source_id},
+            source_type='${source_type}',
+            tag='${tagField}',
+            point=${ST_Point}
+        Where id=${id}`);
     },
     delete: id => db.none(`Delete From POI Where id=${id}`),
-    info: id =>
-        db.one(
-            `Select *, ST_AsText(point) as plain_point 
-            From POI Where id=${id}`
-        ),
-    count: () => db.one("Select count(*) From POI").then(r => r.count)
+    info: async function(id) {
+        let poi = await db.one(`
+            Select *, ST_AsText(point) as point 
+            From POI Where id=${id}`);
+        replacePointWithLatlng(poi);
+        return poi;
+    },
+    count: () => db.one("Select count(*) From POI").then(r => parseInt(r.count))
 };
 
 module.exports = {
