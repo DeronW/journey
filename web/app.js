@@ -25,11 +25,6 @@ app.use(
     })
 );
 
-app.use(function (err, req, res, next) {
-    logger.error(err.stack);
-    res.status(500).send("Something broke!");
-});
-
 app.get("/ping", (req, res) => res.send("pong"));
 
 app.get("/toolkit", async (req, res) => {
@@ -57,10 +52,10 @@ app.get("/poi/list", async (req, res) => {
 });
 
 app.post("/poi/create", async (req, res) => {
-    let { source_id, source_type, tag, lat, lng } = req.body;
+    let { source_id, source_type, tags, lat, lng } = req.body;
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
-    let id = await db.POI.create(source_id, source_type, tag, lat, lng);
+    let id = await db.POI.create(source_id, source_type, tags, lat, lng);
     res.json({ id });
 });
 
@@ -70,10 +65,10 @@ app.post("/poi/:id/delete", async (req, res) => {
 });
 
 app.post("/poi/:id/update", async (req, res) => {
-    let { source_id, source_type, tag, lat, lng } = req.body;
+    let { source_id, source_type, tags, lat, lng } = req.body;
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
-    db.POI.update(req.params.id, source_id, source_type, tag, lat, lng);
+    db.POI.update(req.params.id, source_id, source_type, tags, lat, lng);
     return res.end();
 });
 
@@ -114,6 +109,8 @@ app.post("/aggregate", async (req, res) => {
             pageNum = 1,
             pageSize = 1000,
             mode = "auto",
+            filter = null,
+            autoEnlarge = false,
             debug = false,
         } = req.body,
         startAt = new Date().getTime();
@@ -137,6 +134,7 @@ app.post("/aggregate", async (req, res) => {
             distance,
             pageNum,
             pageSize,
+            filter,
             debug
         );
     } else if (mode == "bundingCircle") {
@@ -144,6 +142,7 @@ app.post("/aggregate", async (req, res) => {
             points,
             pageNum,
             pageSize,
+            filter,
             debug
         );
     } else return res.status(400).end("wrong mode parameter");

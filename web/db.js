@@ -15,6 +15,11 @@ const DATABASE_CONFIG = {
 
 let db = pgp(DATABASE_CONFIG);
 
+function many(sql) {
+    // logger.debug(sql);
+    return db.many(sql);
+}
+
 (async function connect() {
     try {
         let r = await db.one("Select now()");
@@ -89,14 +94,14 @@ async function createTable() {
             id SERIAL PRIMARY KEY,
             source_id INT NOT NULL,
             source_type VARCHAR(32),
-            tag JSONB,
+            tags JSONB,
             point GEOMETRY(POINT, 4326),
             updated_at timestamp
         )
         `,
         `Create Index region_gis_index On Region USING GIST(border)`,
         `Create Index poi_gis_index On POI USING GIST(point)`,
-        `Create Index poi_tag_jsonb_index On POI USING GIN(tag)`,
+        `Create Index poi_tags_jsonb_index On POI USING GIN(tags)`,
     ];
     await resetAll();
     for (let i = 0; i < sql.length; i++) {
@@ -122,19 +127,19 @@ async function importScenicPoints() {
         let source_id = parseInt(i.scenic_id),
             lat = parseFloat(i.lat),
             lng = parseFloat(i.lng),
-            tag = JSON.stringify({
+            tags = JSON.stringify({
                 name: i.scenic_name,
                 rank: parseInt(i.rank),
                 name_en: i.english,
             }).replace(/'/g, "''"),
             point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         if (isNaN(lat) || isNaN(lng) || isNaN(i.rank)) return null;
-        return `(${source_id}, '${tag}', ${point}, now())`;
+        return `(${source_id}, '${tags}', ${point}, now())`;
     });
     values = values.filter((i) => !!i).join(",");
 
     await db.none(`Insert Into POI (
-        source_id, tag, point, updated_at
+        source_id, tags, point, updated_at
     ) Values ${values}`);
     await db.none(`Update Setup Set complete=true Where phase='points'`);
 }
@@ -220,32 +225,33 @@ async function queryPOIsWithPolylineBuffer(
     distance,
     pageNum,
     pageSize,
+    filter,
     debug
 ) {
     // https://postgis.net/docs/ST_Buffer.html
     // distance, unit: kilometer
     let line = points.map((i) => `${i.lng} ${i.lat}`).join(","),
         offset = (pageNum - 1) * pageSize,
+        tagsCnd = filter ? `tags @> '${JSON.stringify(filter)}'` : "True",
         buffer = `Select ST_Buffer( 
             ST_GeomFromText('LINESTRING(${line})', 4326)::geography, 
             ${distance}, 
             'endcap=flat join=mitre mitre_limit=1.0')::geometry as buffer`;
 
     let totalCount;
-    let pois = await db
-        .many(
-            `Select 
-                source_id, tag, 
+    let pois = await many(
+        `Select 
+                source_id, tags, 
                 ST_AsText(point) as point,
                 count(*) OVER() AS total_count 
-            From ( 
+            From (
                 Select *, ST_Contains(buffer, point) 
                 From POI, (${buffer}) as buffer ) as tbl
-            Where tbl.st_contains = true
+            Where tbl.st_contains = true And ${tagsCnd}
             Order By id Asc
             Offset ${offset}
             Limit ${pageSize}`
-        )
+    )
         .then((pois) => {
             totalCount = parseInt(pois[0].total_count);
             pois.map((i) => delete i.total_count);
@@ -285,9 +291,16 @@ async function queryPOIsWithPolylineBuffer(
     };
 }
 
-async function queryPOIsWithBoundingCircle(points, pageNum, pageSize, debug) {
+async function queryPOIsWithBoundingCircle(
+    points,
+    pageNum,
+    pageSize,
+    filter,
+    debug
+) {
     //  https://postgis.net/docs/ST_MinimumBoundingCircle.html
     let line = points.map((i) => `${i.lng} ${i.lat}`).join(","),
+        tagsCnd = filter ? `tags @> '${JSON.stringify(filter)}'` : "True",
         offset = (pageNum - 1) * pageSize;
 
     let circle = `Select ST_MinimumBoundingCircle( ST_Collect(ST_GeomFromText('LINESTRING(${line})', 4326)), 2 ) as circle`;
@@ -296,12 +309,12 @@ async function queryPOIsWithBoundingCircle(points, pageNum, pageSize, debug) {
     let pois = await db
         .many(
             `Select 
-                source_id, tag, 
+                source_id, tags, 
                 ST_AsText(point) as point,
                 count(*) OVER() AS total_count From (
                     Select *, ST_Contains( circle, point ) 
-                    From POI, (${circle}) as circle ) as a 
-            Where a.st_contains = true
+                    From POI, (${circle}) as circle ) as tbl
+            Where tbl.st_contains = true And ${tagsCnd}
             Order By id Asc
             Offset ${offset}
             Limit ${pageSize}`
@@ -319,7 +332,7 @@ async function queryPOIsWithBoundingCircle(points, pageNum, pageSize, debug) {
             From (
                 Select ST_Contains(circle, point) 
                 From POI, (${circle}) as circle ) as tbl
-            Where tbl.st_contains = true
+            Where tbl.st_contains = true And ${tagsCnd}
             `
                 )
                 .then((r) => parseInt(r.count));
@@ -403,7 +416,7 @@ const POI = {
             .many(
                 `
         Select 
-            id, source_id, source_type, tag, 
+            id, source_id, source_type, tags, 
             ST_AsText(point) as point,
             count(*) OVER() AS total_count
         From POI Order By id Asc Offset ${pageNum * pageSize} Limit ${pageSize}
@@ -426,28 +439,28 @@ const POI = {
 
         return { pois, totalCount };
     },
-    create: function (source_id, source_type = null, tag = {}, lat, lng) {
-        let tagField = JSON.stringify(tag).replace(/'/g, "''");
+    create: function (source_id, source_type = null, tags = {}, lat, lng) {
+        let tagsField = JSON.stringify(tags).replace(/'/g, "''");
         let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         return db
             .one(
                 `
             Insert Into POI 
-            (source_id, source_type, tag, point, updated_at) 
-            Values ( ${source_id}, ${source_type}, '${tagField}', ${ST_Point}, now() ) 
+            (source_id, source_type, tags, point, updated_at) 
+            Values ( ${source_id}, ${source_type}, '${tagsField}', ${ST_Point}, now() ) 
             Returning id`
             )
             .then((r) => r.id);
     },
-    update: function (id, source_id, source_type = null, tag = {}, lat, lng) {
-        let tagField = JSON.stringify(tag).replace(/'/g, "''");
+    update: function (id, source_id, source_type = null, tags = {}, lat, lng) {
+        let tagsField = JSON.stringify(tags).replace(/'/g, "''");
         let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
 
         return db.none(`
         Update POI Set
             source_id=${source_id},
             source_type=${source_type},
-            tag='${tagField}',
+            tags='${tagsField}',
             point=${ST_Point},
             updated_at=now()
         Where id=${id}`);
@@ -468,6 +481,7 @@ const POI = {
         return poi;
     },
 };
+
 module.exports = {
     DATABASE_CONFIG,
     POI,

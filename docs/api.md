@@ -10,7 +10,7 @@
 {
     "source_id": 1, // int类型
     "source_type": "xxx", // string类型
-    "tag": {
+    "tags": {
         // JSON类型
         "level": "AAAA",
         "avarage_price": 200,
@@ -50,7 +50,7 @@ URL 参数
 ```shell
 curl "http://localhost:3000/poi/list?pageNum=1&pageSize=2"
 
-# {"pageNum":0,"pageSize":2,"totalCount":17176,"pois":[{"id":2,"source_id":2,"source_type":null,"tag":{"name":"仁龙坝冰川","rank":0,"name_en":"renlongba"},"lat":29.288548,"lng":96.929896},{"id":3,"source_id":3,"source_type":null,"tag":{"name":"格聂之眼","rank":0,"name_en":"niegezhiyan"},"lat":29.80845,"lng":99.605095}]}
+# {"pageNum":0,"pageSize":2,"totalCount":17176,"pois":[{"id":2,"source_id":2,"source_type":null,"tags":{"name":"仁龙坝冰川","rank":0,"name_en":"renlongba"},"lat":29.288548,"lng":96.929896},{"id":3,"source_id":3,"source_type":null,"tags":{"name":"格聂之眼","rank":0,"name_en":"niegezhiyan"},"lat":29.80845,"lng":99.605095}]}
 ```
 
 ### 查询某一个点
@@ -70,7 +70,7 @@ curl "http://localhost:3000/poi/list?pageNum=1&pageSize=2"
     "id": 2,
     "source_id": 2,
     "source_type": null,
-    "tag": { "name": "仁龙坝冰川", "rank": 0, "name_en": "renlongba" },
+    "tags": { "name": "仁龙坝冰川", "rank": 0, "name_en": "renlongba" },
     "updated_at": "2020-03-31T03:55:18.760Z",
     "lat": 29.288548,
     "lng": 96.929896
@@ -81,7 +81,7 @@ curl "http://localhost:3000/poi/list?pageNum=1&pageSize=2"
 
 ```shell
 curl "http://localhost:3000/poi/2"
-# {"id":2,"source_id":2,"source_type":null,"tag":{"name":"仁龙坝冰川","rank":0,"name_en":"renlongba"},"updated_at":"2020-03-31T03:55:18.760Z","lat":29.288548,"lng":96.929896}
+# {"id":2,"source_id":2,"source_type":null,"tags":{"name":"仁龙坝冰川","rank":0,"name_en":"renlongba"},"updated_at":"2020-03-31T03:55:18.760Z","lat":29.288548,"lng":96.929896}
 ```
 
 #### 删除一个点
@@ -180,7 +180,8 @@ curl -X POST "http://localhost:3000/poi/create" -H "Content-Type: application/js
 -   pageNum：结果分页中的页数，可选参数，默认 1
 -   pageSize：结果分页中每页的结果数量，可选参数，默认 1000
 -   distance：路径附近景点的搜索距离，可选参数，默认值 10000，单位米
--   mode: 图形检索模式，可选参数，枚举类型 polylineBuffer/bundingCircle，默认 auto
+-   mode：图形检索模式，可选参数，枚举类型 polylineBuffer/bundingCircle，默认 auto
+-   filter：用于过滤标签，只选择完全等于标签的景点对象，可选参数，默认 {}
 -   debug: 返回更多调试信息，可选参数，默认值 false，注意：打开后会导致接口效率下降 1.5 倍左右
 
 返回
@@ -191,7 +192,7 @@ curl -X POST "http://localhost:3000/poi/create" -H "Content-Type: application/js
         // 路径周边在「distance」范围内的景点
         {
             "source_id": 256,
-            "tag": {
+            "tags": {
                 "name": "枫泾古镇",
                 "rank": 0,
                 "name_en": "Fengjing Ancient Town"
@@ -201,7 +202,7 @@ curl -X POST "http://localhost:3000/poi/create" -H "Content-Type: application/js
         },
         {
             "source_id": 323,
-            "tag": {
+            "tags": {
                 "name": "练塘古镇",
                 "rank": 0,
                 "name_en": "Liantang Ancient Town"
@@ -211,7 +212,7 @@ curl -X POST "http://localhost:3000/poi/create" -H "Content-Type: application/js
         },
         {
             "source_id": 330,
-            "tag": {
+            "tags": {
                 "name": "寻梦园",
                 "rank": 0,
                 "name_en": "Dream Garden Herb Farm"
@@ -221,7 +222,7 @@ curl -X POST "http://localhost:3000/poi/create" -H "Content-Type: application/js
         },
         {
             "source_id": 338,
-            "tag": {
+            "tags": {
                 "name": "金泽古镇",
                 "rank": 0,
                 "name_en": ""
@@ -247,4 +248,10 @@ curl -X POST "http://localhost:3000/poi/create" -H "Content-Type: application/js
 
 ```shell
 curl -X POST "http://localhost:3000/aggregate" -H "Content-Type: application/json" --data '{"pageSize": 2,"points": [{"lat": 30, "lng": 120}, {"lat": 29, "lng": 115}]}'
+```
+
+带过滤条件的请求
+
+```shell
+curl -X POST "http://localhost:3000/aggregate" -H "Content-Type: application/json" --data '{"pageSize": 2,"points": [{"lat": 30, "lng": 120}, {"lat": 29, "lng": 115}], "filter": {"rank": 0, "name_en": "Longmen Ancient Town"}}'
 ```
