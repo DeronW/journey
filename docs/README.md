@@ -2,7 +2,7 @@
 
 ### 算法说明
 
-TODO
+TODO: 算法需要优化说明
 
 ### 注意事项
 
@@ -27,16 +27,16 @@ TODO
     -   [x] aggragate
     -   [x] poi/\*
     -   [x] admin/\*
--   [ ] Dashboard
+-   [x] Dashboard
     -   [x] map preview
     -   [x] point CRUD
--   [ ] Documents
+-   [x] Documents
     -   [x] database
     -   [x] api
-    -   [ ] install
--   [ ] Test
-    -   [ ] unit test
-    -   [ ] performance test
+    -   [x] install
+-   [x] Test
+    -   [x] integrate test
+    -   [x] performance test
 
 ### 开发计划
 

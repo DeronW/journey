@@ -10,7 +10,7 @@ const DATABASE_CONFIG = {
     port: ENV.POSTGIS.PORT,
     database: ENV.POSTGIS.DATABASE,
     user: ENV.POSTGIS.USER,
-    password: ENV.POSTGIS.PASSWORD
+    password: ENV.POSTGIS.PASSWORD,
 };
 
 let db = pgp(DATABASE_CONFIG);
@@ -31,7 +31,7 @@ function exist(sql) {
     return db
         .one(sql)
         .then(() => true)
-        .catch(err => {
+        .catch((err) => {
             if (isNoData(err)) return false;
             else throw err;
         });
@@ -47,8 +47,8 @@ function isNoData(err) {
 function testConnection() {
     // 测试数据库链接情况
     return db.one("Select now()").then(
-        data => data.now,
-        err => logger.error(err)
+        (data) => data.now,
+        (err) => logger.error(err)
     );
 }
 
@@ -59,11 +59,11 @@ async function querySetup() {
     let steps = {
         tableCreated: false,
         chinaBoundaryImported: false,
-        scenicPointsImported: false
+        scenicPointsImported: false,
     };
     if (hasTable) {
         let rows = await db.many("Select * From Setup");
-        rows.forEach(row => {
+        rows.forEach((row) => {
             if (row.phase == "table") steps.tableCreated = row.complete;
             if (row.phase == "bundary")
                 steps.chinaBoundaryImported = row.complete;
@@ -96,7 +96,7 @@ async function createTable() {
         `,
         `Create Index region_gis_index On Region USING GIST(border)`,
         `Create Index poi_gis_index On POI USING GIST(point)`,
-        `Create Index poi_tag_jsonb_index On POI USING GIN(tag)`
+        `Create Index poi_tag_jsonb_index On POI USING GIN(tag)`,
     ];
     await resetAll();
     for (let i = 0; i < sql.length; i++) {
@@ -105,33 +105,33 @@ async function createTable() {
 }
 
 async function importScenicPoints() {
-    let rows = await new Promise(function(resolve, reject) {
+    let rows = await new Promise(function (resolve, reject) {
         let rows = [];
         fs.createReadStream(`${__dirname}/fixtures/points.csv`)
             .pipe(csv.parse({ headers: true }))
-            .on("error", error => reject(error))
-            .on("data", row => rows.push(row))
-            .on("end", rowCount => {
+            .on("error", (error) => reject(error))
+            .on("data", (row) => rows.push(row))
+            .on("end", (rowCount) => {
                 resolve(rows);
             });
     });
 
     await db.none(`Delete From POI`);
 
-    let values = rows.map(i => {
+    let values = rows.map((i) => {
         let source_id = parseInt(i.scenic_id),
             lat = parseFloat(i.lat),
             lng = parseFloat(i.lng),
             tag = JSON.stringify({
                 name: i.scenic_name,
                 rank: parseInt(i.rank),
-                name_en: i.english
+                name_en: i.english,
             }).replace(/'/g, "''"),
             point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         if (isNaN(lat) || isNaN(lng) || isNaN(i.rank)) return null;
         return `(${source_id}, '${tag}', ${point}, now())`;
     });
-    values = values.filter(i => !!i).join(",");
+    values = values.filter((i) => !!i).join(",");
 
     await db.none(`Insert Into POI (
         source_id, tag, point, updated_at
@@ -145,18 +145,18 @@ async function resetAll() {
     await db.none("Drop Table If Exists Setup");
 }
 
-function isExitBorder(points) {
-    let line = points.map(i => `${i.lng} ${i.lat}`).join(","),
+function isTransboundary(points) {
+    let line = points.map((i) => `${i.lng} ${i.lat}`).join(","),
         fragments = points
             .map(
                 (i, index) =>
-                    `ST_Contains(border, ST_GeomFromText('POINT(${i.lng} ${i.lat})', 4326)) as point${index}`
+                    `not ST_Contains(border, ST_GeomFromText('POINT(${i.lng} ${i.lat})', 4326)) as point${index}`
             )
             .join(",");
 
     let sql = `
         Select 
-            ST_Contains(border, ST_GeomFromText('LINESTRING(${line})',4326)) as line,
+            not ST_Contains(border, ST_GeomFromText('LINESTRING(${line})',4326)) as line,
             ${fragments}
         From (SELECT border FROM region WHERE code = '86') as bundary
         `;
@@ -172,7 +172,7 @@ function calculateCarpet(points) {
             { lat: lat - D, lng: lng + D },
             { lat: lat + D, lng: lng + D },
             { lat: lat + D, lng: lng - D },
-            { lat: lat - D, lng: lng - D }
+            { lat: lat - D, lng: lng - D },
         ];
     }
 
@@ -196,7 +196,7 @@ function calculateCarpet(points) {
             { lat: p1.lat + cosα * D1, lng: p1.lng - sinα * D1 },
             { lat: p2.lat + cosα * D2, lng: p2.lng - sinα * D2 },
             { lat: p2.lat - cosα * D2, lng: p2.lng + sinα * D2 },
-            { lat: p1.lat - cosα * D1, lng: p2.lng + sinα * D1 }
+            { lat: p1.lat - cosα * D1, lng: p2.lng + sinα * D1 },
         ]);
     }
 
@@ -206,7 +206,7 @@ function calculateCarpet(points) {
 }
 
 function replacePointWithLatlng(poi) {
-    let fix6 = f => parseInt(parseFloat(f) * 1000000) / 1000000;
+    let fix6 = (f) => parseInt(parseFloat(f) * 1000000) / 1000000;
     let t = poi.point.substr(6, poi.point.length - 6).split(" "),
         lat = fix6(t[1]),
         lng = fix6(t[0]);
@@ -215,36 +215,138 @@ function replacePointWithLatlng(poi) {
     poi.lng = lng;
 }
 
-async function queryPOIs(points, distance, pageNum, pageSize) {
+async function queryPOIsWithPolylineBuffer(
+    points,
+    distance,
+    pageNum,
+    pageSize,
+    debug
+) {
+    // https://postgis.net/docs/ST_Buffer.html
     // distance, unit: kilometer
-    let line = points.map(i => `${i.lng} ${i.lat}`).join(","),
+    let line = points.map((i) => `${i.lng} ${i.lat}`).join(","),
         offset = (pageNum - 1) * pageSize,
-        buffer = `ST_Buffer( 
+        buffer = `Select ST_Buffer( 
             ST_GeomFromText('LINESTRING(${line})', 4326)::geography, 
             ${distance}, 
-            'endcap=flat join=mitre mitre_limit=1.0')
-        `;
-    let { polygon } = await db.one(` Select ST_AsText(${buffer}) as polygon`);
+            'endcap=flat join=mitre mitre_limit=1.0')::geometry as buffer`;
 
-    let pois = await db.many(`
-    Select source_id, tag, ST_AsText(point) as point From (
-        Select *, ST_Contains(ST_GeomFromText('${polygon}', 4326), point) From POI ) as a 
-    Where a.st_contains = true
-    Order By id Asc
-    Offset ${offset}
-    Limit ${pageSize}
-    `);
-    pois.map(i => replacePointWithLatlng(i));
+    let totalCount;
+    let pois = await db
+        .many(
+            `Select 
+                source_id, tag, 
+                ST_AsText(point) as point,
+                count(*) OVER() AS total_count 
+            From ( 
+                Select *, ST_Contains(buffer, point) 
+                From POI, (${buffer}) as buffer ) as tbl
+            Where tbl.st_contains = true
+            Order By id Asc
+            Offset ${offset}
+            Limit ${pageSize}`
+        )
+        .then((pois) => {
+            totalCount = parseInt(pois[0].total_count);
+            pois.map((i) => delete i.total_count);
+            return pois;
+        })
+        .catch(async (err) => {
+            totalCount = await db
+                .one(
+                    `
+                Select count(*) 
+                From (
+                    Select ST_Contains(buffer, point) 
+                    From POI, (${buffer}) as buffer ) as tbl
+                Where tbl.st_contains = true
+                `
+                )
+                .then((r) => parseInt(r.count));
+
+            if (isNoData(err)) return [];
+            else throw err;
+        });
+
+    pois.map((i) => replacePointWithLatlng(i));
+
+    let polygon;
+    if (debug) {
+        let t = await db.one(
+            `Select ST_AsText(buffer) as polygon From (${buffer}) as tbl`
+        );
+        polygon = t.polygon;
+    }
 
     return {
         polygon,
-        pois
+        pois,
+        totalCount,
+    };
+}
+
+async function queryPOIsWithBoundingCircle(points, pageNum, pageSize, debug) {
+    //  https://postgis.net/docs/ST_MinimumBoundingCircle.html
+    let line = points.map((i) => `${i.lng} ${i.lat}`).join(","),
+        offset = (pageNum - 1) * pageSize;
+
+    let circle = `Select ST_MinimumBoundingCircle( ST_Collect(ST_GeomFromText('LINESTRING(${line})', 4326)), 2 ) as circle`;
+
+    let totalCount;
+    let pois = await db
+        .many(
+            `Select 
+                source_id, tag, 
+                ST_AsText(point) as point,
+                count(*) OVER() AS total_count From (
+                    Select *, ST_Contains( circle, point ) 
+                    From POI, (${circle}) as circle ) as a 
+            Where a.st_contains = true
+            Order By id Asc
+            Offset ${offset}
+            Limit ${pageSize}`
+        )
+        .then((pois) => {
+            totalCount = parseInt(pois[0].total_count);
+            pois.map((i) => delete i.total_count);
+            return pois;
+        })
+        .catch(async (err) => {
+            totalCount = await db
+                .one(
+                    `
+            Select count(*) 
+            From (
+                Select ST_Contains(circle, point) 
+                From POI, (${circle}) as circle ) as tbl
+            Where tbl.st_contains = true
+            `
+                )
+                .then((r) => parseInt(r.count));
+
+            if (isNoData(err)) return [];
+            else throw err;
+        });
+    pois.map((i) => replacePointWithLatlng(i));
+
+    let polygon;
+    if (debug) {
+        let t = await db.one(
+            `Select ST_AsText(circle) as polygon From (${circle}) as tbl`
+        );
+        polygon = t.polygon;
+    }
+
+    return {
+        polygon,
+        pois,
+        totalCount,
     };
 }
 
 async function threadLock(seconds) {
     let r = await db.one("Select now()");
-    let t = await new Promise(r => setTimeout(r, seconds * 1000));
+    let t = await new Promise((r) => setTimeout(r, seconds * 1000));
     return [r, t];
 }
 
@@ -255,7 +357,7 @@ async function importRegionBundary() {
 
 async function importChinaRegion() {
     const points = require("./fixtures/mainland");
-    let border = points.map(i => `${i[0]} ${i[1]}`);
+    let border = points.map((i) => `${i[0]} ${i[1]}`);
     border.push(points[0][0] + " " + points[0][1]);
     border = border.join(",");
     await db.none(
@@ -296,15 +398,35 @@ async function importStateRegion() {
 }
 
 const POI = {
-    list: async function(pageNum, pageSize) {
-        let pois = await db.many(`
-        Select id, source_id, source_type, tag, ST_AsText(point) as point
+    list: async function (pageNum, pageSize) {
+        let pois = await db
+            .many(
+                `
+        Select 
+            id, source_id, source_type, tag, 
+            ST_AsText(point) as point,
+            count(*) OVER() AS total_count
         From POI Order By id Asc Offset ${pageNum * pageSize} Limit ${pageSize}
-        `);
-        pois.map(i => replacePointWithLatlng(i));
-        return pois;
+        `
+            )
+            .then((pois) => {
+                totalCount = parseInt(pois[0].total_count);
+                pois.map((i) => delete i.total_count);
+                return pois;
+            })
+            .catch(async (err) => {
+                totalCount = await db
+                    .one("Select count(*) From POI")
+                    .then((r) => parseInt(r.count));
+
+                if (isNoData(err)) return [];
+                else throw err;
+            });
+        pois.map((i) => replacePointWithLatlng(i));
+
+        return { pois, totalCount };
     },
-    create: function(source_id, source_type = null, tag = {}, lat, lng) {
+    create: function (source_id, source_type = null, tag = {}, lat, lng) {
         let tagField = JSON.stringify(tag).replace(/'/g, "''");
         let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         return db
@@ -315,9 +437,9 @@ const POI = {
             Values ( ${source_id}, ${source_type}, '${tagField}', ${ST_Point}, now() ) 
             Returning id`
             )
-            .then(r => r.id);
+            .then((r) => r.id);
     },
-    update: function(id, source_id, source_type = null, tag = {}, lat, lng) {
+    update: function (id, source_id, source_type = null, tag = {}, lat, lng) {
         let tagField = JSON.stringify(tag).replace(/'/g, "''");
         let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
 
@@ -330,24 +452,22 @@ const POI = {
             updated_at=now()
         Where id=${id}`);
     },
-    delete: id => db.none(`Delete From POI Where id=${id}`),
-    info: async function(id) {
+    delete: (id) => db.none(`Delete From POI Where id=${id}`),
+    info: async function (id) {
         let poi = await db
             .one(
                 `
             Select *, ST_AsText(point) as point 
             From POI Where id=${id}`
             )
-            .catch(err => {
+            .catch((err) => {
                 if (isNoData(err)) return false;
                 else throw err;
             });
         if (poi) replacePointWithLatlng(poi);
         return poi;
     },
-    count: () => db.one("Select count(*) From POI").then(r => parseInt(r.count))
 };
-
 module.exports = {
     DATABASE_CONFIG,
     POI,
@@ -357,8 +477,9 @@ module.exports = {
     importRegionBundary,
     querySetup,
     resetAll,
-    isExitBorder,
+    isTransboundary,
     threadLock,
     calculateCarpet,
-    queryPOIs
+    queryPOIsWithPolylineBuffer,
+    queryPOIsWithBoundingCircle,
 };

@@ -120,6 +120,10 @@ Body 参数
 
 示例
 
+```shell
+curl -X POST "http://localhost:3000/poi/2/update" -H "Content-Type: application/json" --data '{"source_id": -1, "lat": 1, "lng": 1}'
+```
+
 ##### 创建一个点
 
 请求
@@ -135,6 +139,12 @@ Body 参数
 ```json
 { "id": 1 }
 // 返回新创建的POI的id
+```
+
+示例
+
+```shell
+curl -X POST "http://localhost:3000/poi/create" -H "Content-Type: application/json" --data '{"source_id": -1, "lat": 1, "lng": 1}'
 ```
 
 ### Admin 管理类接口
@@ -159,21 +169,26 @@ Body 参数
         { "lat": 26, "lng": 120 }
     ],
     "distance": 10000,
-    "pageSize": 4
+    "pageSize": 4,
+    "pageNum": 1
 }
 ```
+
+参数说明
+
+-   points：途经点坐标，数组类型每组数据必须包含 lat 和 lng 参数，必选参数
+-   pageNum：结果分页中的页数，可选参数，默认 1
+-   pageSize：结果分页中每页的结果数量，可选参数，默认 1000
+-   distance：路径附近景点的搜索距离，可选参数，默认值 10000，单位米
+-   mode: 图形检索模式，可选参数，枚举类型 polylineBuffer/bundingCircle，默认 auto
+-   debug: 返回更多调试信息，可选参数，默认值 false，注意：打开后会导致接口效率下降 1.5 倍左右
 
 返回
 
 ```json
 {
-    "exitedBorder": {
-        "line": false,
-        "point0": true,
-        "point1": true,
-        "point2": false
-    },
     "pois": [
+        // 路径周边在「distance」范围内的景点
         {
             "source_id": 256,
             "tag": {
@@ -181,10 +196,8 @@ Body 参数
                 "rank": 0,
                 "name_en": "Fengjing Ancient Town"
             },
-            "point": {
-                "lat": 30.892765,
-                "lng": 121.022922
-            }
+            "lat": 30.892765,
+            "lng": 121.022922
         },
         {
             "source_id": 323,
@@ -193,10 +206,8 @@ Body 参数
                 "rank": 0,
                 "name_en": "Liantang Ancient Town"
             },
-            "point": {
-                "lat": 31.013573,
-                "lng": 121.051569
-            }
+            "lat": 31.013573,
+            "lng": 121.051569
         },
         {
             "source_id": 330,
@@ -205,10 +216,8 @@ Body 参数
                 "rank": 0,
                 "name_en": "Dream Garden Herb Farm"
             },
-            "point": {
-                "lat": 31.047305,
-                "lng": 121.096738
-            }
+            "lat": 31.047305,
+            "lng": 121.096738
         },
         {
             "source_id": 338,
@@ -217,12 +226,25 @@ Body 参数
                 "rank": 0,
                 "name_en": ""
             },
-            "point": {
-                "lat": 31.04180420656,
-                "lng": 120.92872062279
-            }
+            "lat": 31.04180420656,
+            "lng": 120.92872062279
         }
     ],
-    "polygon": "POLYGON((120.976096320576 31.1099223831419,121.114584888213 31.0526316896348,120.098319299523 25.9844777459729,119.901661816882 26.0154529635895,120.830677375599 30.6952438703413,120.078528738429 29.9412351715907,119.921379638315 30.0587110226732,120.976096320576 31.1099223831419))"
+    "debug": {
+        "polygon": "POLYGON((120.976096320576 31.1099223831419,121.114584888213 31.0526316896348,120.098319299523 25.9844777459729,119.901661816882 26.0154529635895,120.830677375599 30.6952438703413,120.078528738429 29.9412351715907,119.921379638315 30.0587110226732,120.976096320576 31.1099223831419))",
+        "transboundary": {
+            "line": false, // 整条路线是是否有超出大陆国境的部分
+            "point0": true, // 点0 是否大陆外
+            "point1": true, // 点1 是否在大陆外
+            "point2": false
+        },
+        "duration": "90ms" // 路线吗查询耗时
+    }
 }
+```
+
+示例
+
+```shell
+curl -X POST "http://localhost:3000/aggregate" -H "Content-Type: application/json" --data '{"pageSize": 2,"points": [{"lat": 30, "lng": 120}, {"lat": 29, "lng": 115}]}'
 ```

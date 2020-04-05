@@ -20,7 +20,7 @@ function importScenicPoints() {
 }
 
 function operate(path) {
-    $.getJSON(path, () => location.reload());
+    $.post(path, {}, () => location.reload());
     readyToRefresh();
 }
 
@@ -44,10 +44,10 @@ function selectedFileChange() {
         var reader = new FileReader();
         reader.readAsText(file, "UTF-8");
         let el = document.getElementById("preview");
-        reader.onload = function(evt) {
+        reader.onload = function (evt) {
             el.innerHTML = evt.target.result;
         };
-        reader.onerror = function(evt) {
+        reader.onerror = function (evt) {
             el.innerHTML = "error reading file";
         };
     }
@@ -61,6 +61,7 @@ function Q1() {
     let form;
     try {
         form = JSON.parse($("#f1").val());
+        form.debug = true
     } catch (e) {
         $("#r1").text(JSON.stringify(e));
         return;
@@ -72,14 +73,17 @@ function Q1() {
         contentType: "application/json",
         data: JSON.stringify(form),
         dataType: "json",
-        success: function(data) {
-            drawPolygon(data.polygon);
+        success: function (data) {
+            drawPolygon(data.debug.polygon);
             drawMarkers(data.pois);
             $("#r1").text(JSON.stringify(data.pois, null, 4));
 
             let info = JSON.parse(JSON.stringify(data));
             delete info.pois;
             $("#r2").text(JSON.stringify(info, null, 4));
+        },
+        fail: function(e){
+            console.log(e)
         }
     });
 
@@ -90,19 +94,19 @@ let map;
 
 function initMap() {
     map = new BMap.Map("map", {
-        enableBizAuthLogo: false
+        enableBizAuthLogo: false,
     });
     map.enableScrollWheelZoom(true);
     // 创建点坐标
     map.centerAndZoom(new BMap.Point(116.404, 39.915), 5);
     // 初始化地图，设置中心点坐标和地图级别
 
-    $.getJSON("/admin/bundary/china", data => {
-        let line = data.map(i => new BMap.Point(i[0], i[1]));
+    $.getJSON("/admin/bundary/china", (data) => {
+        let line = data.map((i) => new BMap.Point(i[0], i[1]));
         let polyline = new BMap.Polyline(line, {
             strokeColor: "blue",
             strokeWeight: 3,
-            strokeOpacity: 0.5
+            strokeOpacity: 0.5,
         });
         map.addOverlay(polyline);
     });
@@ -110,11 +114,11 @@ function initMap() {
 
 function drawPolyline(points) {
     map.removeOverlay(currentPolyline);
-    let line = points.map(i => new BMap.Point(i.lng, i.lat));
+    let line = points.map((i) => new BMap.Point(i.lng, i.lat));
     currentPolyline = new BMap.Polyline(line, {
         strokeColor: "green",
         strokeWeight: 3,
-        strokeOpacity: 0.5
+        strokeOpacity: 0.5,
     });
     map.addOverlay(currentPolyline);
 }
@@ -124,28 +128,29 @@ function drawPolygon(polygonStr) {
     let points = polygonStr
         .substr(9, polygonStr.length - 11)
         .split(",")
-        .map(i => i.split(" "));
-    points = points.map(i => new BMap.Point(i[0], i[1]));
+        .map((i) => i.split(" "));
+    points = points.map((i) => new BMap.Point(i[0], i[1]));
 
     currentPolygon = new BMap.Polyline(points, {
         strokeColor: "blue",
         strokeWeight: 6,
-        strokeOpacity: 0.5
+        strokeOpacity: 0.5,
     });
     map.addOverlay(currentPolygon);
 }
 
 function drawMarkers(pois) {
-    Markers.forEach(i => map.removeOverlay(i));
+    Markers.forEach((i) => map.removeOverlay(i));
     Markers = [];
     for (let i = 0; i < pois.length; i++) {
-        let { lat, lng } = pois[i].point;
-        let point = new BMap.Point(lng, lat);
-        Markers.push(point);
-        map.addOverlay(new BMap.Marker(point));
+        let { lat, lng, tag } = pois[i];
+        let point = new BMap.Point(lng, lat),
+            marker = new BMap.Marker(point);
+        Markers.push(marker);
+        map.addOverlay(marker);
     }
 }
 
-$(function() {
+$(function () {
     initMap();
 });

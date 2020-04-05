@@ -2,6 +2,6 @@
 
 ```shell
 
-TAG=0.2 docker-compose -p tortuous up -d
+TAG=0.3 docker-compose -p tortuous up -d
 
 ```

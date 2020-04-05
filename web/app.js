@@ -21,11 +21,11 @@ app.use(
     log4js.connectLogger(logger, {
         level: "info",
         context: true,
-        format: ":status :method :url"
+        format: ":status :method :url",
     })
 );
 
-app.use(function(err, req, res, next) {
+app.use(function (err, req, res, next) {
     logger.error(err.stack);
     res.status(500).send("Something broke!");
 });
@@ -44,7 +44,7 @@ app.get("/toolkit", async (req, res) => {
     res.render("index.hbs", {
         database,
         upTime: `${days}d ${hours}h ${minutes}m`,
-        initialization
+        initialization,
     });
 });
 
@@ -52,8 +52,7 @@ app.get("/poi/list", async (req, res) => {
     let { pageNum, pageSize } = req.query;
     pageSize = parseInt(pageSize) || 20;
     pageNum = (parseInt(pageNum) || 1) - 1;
-    let pois = await db.POI.list(pageNum, pageSize);
-    let totalCount = await db.POI.count();
+    let { pois, totalCount } = await db.POI.list(pageNum, pageSize);
     res.json({ pageNum, pageSize, totalCount, pois });
 });
 
@@ -80,26 +79,26 @@ app.post("/poi/:id/update", async (req, res) => {
 
 app.get("/poi/:id", async (req, res) => {
     let poi = await db.POI.info(req.params.id);
-    if(poi) res.json(poi);
-    else res.status(404).end()
+    if (poi) res.json(poi);
+    else res.status(404).end();
 });
 
-app.get("/admin/create-table", async (req, res) => {
+app.post("/admin/create-table", async (req, res) => {
     await db.createTable();
     res.end();
 });
 
-app.get("/admin/import-china-bundary", async (req, res) => {
+app.post("/admin/import-china-bundary", async (req, res) => {
     await db.importRegionBundary();
     res.end();
 });
 
-app.get("/admin/import-scennic-points", async (req, res) => {
+app.post("/admin/import-scennic-points", async (req, res) => {
     await db.importScenicPoints();
     res.end();
 });
 
-app.get("/admin/reset-all", async (req, res) => {
+app.post("/admin/reset-all", async (req, res) => {
     await db.resetAll();
     res.end();
 });
@@ -110,11 +109,14 @@ app.get("/admin/bundary/china", (req, res) => {
 
 app.post("/aggregate", async (req, res) => {
     let {
-        distance = 10000,
-        points = [],
-        pageNum = 1,
-        pageSize = 20
-    } = req.body;
+            distance = 10000,
+            points = [],
+            pageNum = 1,
+            pageSize = 1000,
+            mode = "auto",
+            debug = false,
+        } = req.body,
+        startAt = new Date().getTime();
 
     if (points.length == 0)
         return res.status(400).end("point should not be empty");
@@ -127,14 +129,33 @@ app.post("/aggregate", async (req, res) => {
             return res.status(400).end("wrong parameters");
     }
 
-    let exitedBorder = await db.isExitBorder(points);
-    let { pois, polygon } = await db.queryPOIs(
-        points,
-        distance,
-        pageNum,
-        pageSize
-    );
-    res.json({ exitedBorder, pois, polygon });
+    if (mode == "auto") mode = "polylineBuffer";
+    let result;
+    if (mode == "polylineBuffer") {
+        result = await db.queryPOIsWithPolylineBuffer(
+            points,
+            distance,
+            pageNum,
+            pageSize,
+            debug
+        );
+    } else if (mode == "bundingCircle") {
+        result = await db.queryPOIsWithBoundingCircle(
+            points,
+            pageNum,
+            pageSize,
+            debug
+        );
+    } else return res.status(400).end("wrong mode parameter");
+    let { pois, polygon, totalCount } = result;
+    let data = { pageSize, pageSize, pois, totalCount };
+    if (debug)
+        data.debug = {
+            polygon,
+            transboundary: await db.isTransboundary(points),
+            duration: new Date().getTime() - startAt + "ms",
+        };
+    res.json(data);
 });
 
 app.listen(3000, "0.0.0.0", () => {

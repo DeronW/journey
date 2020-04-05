@@ -21,7 +21,24 @@ sudo apt intall docker docker-compose
 cd /srv
 sudo mkdir mypoi
 sudo chown -R www.wwww mypoi
-cd mypoi
-copy_project_file_to_current_path
+```
+
+### 安装方法（一）
+
+源码安装
+
+```shell
+cd /srv/mypoi
+# copy src code to current path
+docker-compose up
+```
+
+### 安装方法（二）
+
+Docker镜像
+
+```shell
+cd /srv/mypoi
+# self define docker-compose.yml file
 docker-compose up
 ```
