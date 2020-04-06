@@ -11,9 +11,10 @@ docker run --name gis -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d post
 ```shell
 
 cd web
-set tag 0.6
+set tag 0.8
 docker build --tag tortuous .
 docker tag tortuous delongw/tortuous:$tag
+docker push delongw/tortuous:$tag
 docker push delongw/tortuous:$tag
 
 ```

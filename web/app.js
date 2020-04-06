@@ -48,7 +48,7 @@ app.get("/poi/list", async (req, res) => {
     pageSize = parseInt(pageSize) || 20;
     pageNum = (parseInt(pageNum) || 1) - 1;
     let { pois, totalCount } = await db.POI.list(pageNum, pageSize);
-    res.json({ pageNum, pageSize, totalCount, pois });
+    res.json({ code: 200, data: { pageNum, pageSize, totalCount, pois } });
 });
 
 app.post("/poi/create", async (req, res) => {
@@ -56,12 +56,12 @@ app.post("/poi/create", async (req, res) => {
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
     let id = await db.POI.create(source_id, source_type, tags, lat, lng);
-    res.json({ id });
+    res.json({ data: { id }, code: 200 });
 });
 
 app.post("/poi/:id/delete", async (req, res) => {
     await db.POI.delete(req.params.id);
-    res.end();
+    res.json({ code: 200 });
 });
 
 app.post("/poi/:id/update", async (req, res) => {
@@ -69,12 +69,12 @@ app.post("/poi/:id/update", async (req, res) => {
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
     db.POI.update(req.params.id, source_id, source_type, tags, lat, lng);
-    return res.end();
+    return res.json({ code: 200 });
 });
 
 app.get("/poi/:id", async (req, res) => {
     let poi = await db.POI.info(req.params.id);
-    if (poi) res.json(poi);
+    if (poi) res.json({ code: 200, data: { poi } });
     else res.status(404).end();
 });
 
@@ -111,6 +111,7 @@ app.post("/aggregate", async (req, res) => {
             mode = "auto",
             filter = null,
             autoEnlarge = false,
+            filterType = "and",
             debug = false,
         } = req.body,
         startAt = new Date().getTime();
@@ -135,6 +136,7 @@ app.post("/aggregate", async (req, res) => {
             pageNum,
             pageSize,
             filter,
+            filterType,
             debug
         );
     } else if (mode == "bundingCircle") {
@@ -143,6 +145,7 @@ app.post("/aggregate", async (req, res) => {
             pageNum,
             pageSize,
             filter,
+            filterType,
             debug
         );
     } else return res.status(400).end("wrong mode parameter");
@@ -154,7 +157,7 @@ app.post("/aggregate", async (req, res) => {
             transboundary: await db.isTransboundary(points),
             duration: new Date().getTime() - startAt + "ms",
         };
-    res.json(data);
+    res.json({ code: 200, data });
 });
 
 app.listen(3000, "0.0.0.0", () => {

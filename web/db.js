@@ -209,18 +209,19 @@ async function queryPOIsWithPolylineBuffer(
     pageNum,
     pageSize,
     filter,
+    filterType,
     debug
 ) {
     // https://postgis.net/docs/ST_Buffer.html
     // distance, unit: kilometer
     let line = points.map((i) => `${i.lng} ${i.lat}`).join(","),
         offset = (pageNum - 1) * pageSize,
-        tagsCnd = filter ? `tags @> '${JSON.stringify(filter)}'` : "True",
         buffer = `Select ST_Buffer( 
             ST_GeomFromText('LINESTRING(${line})', 4326)::geography, 
             ${distance}, 
             'endcap=flat join=mitre mitre_limit=1.0')::geometry as buffer`;
 
+    let tagsCnd = convertFilterToConditions(filter, filterType);
     let totalCount;
     let pois = await many(
         `Select 
@@ -274,17 +275,36 @@ async function queryPOIsWithPolylineBuffer(
     };
 }
 
+function convertFilterToConditions(filter, filterType) {
+    let tagsCnd = "True";
+    if (!filter) return tagsCnd;
+
+    let toS = (obj) => JSON.stringify(obj).replace(/'/g, "''");
+
+    if (filterType == "and") {
+        tagsCnd = `tags @> '${toS(filter)}'`;
+    } else if (filterType == "or") {
+        tagsCnd = Object.keys(filter).map(
+            (i) => `tags @> '${toS({ [i]: filter[i] })}'`
+        );
+        tagsCnd = `(${tagsCnd.join(" Or ")})`;
+    }
+    return tagsCnd;
+}
+
 async function queryPOIsWithBoundingCircle(
     points,
     pageNum,
     pageSize,
     filter,
+    filterType,
     debug
 ) {
     //  https://postgis.net/docs/ST_MinimumBoundingCircle.html
     let line = points.map((i) => `${i.lng} ${i.lat}`).join(","),
-        tagsCnd = filter ? `tags @> '${JSON.stringify(filter)}'` : "True",
         offset = (pageNum - 1) * pageSize;
+
+    let tagsCnd = convertFilterToConditions(filter, filterType);
 
     let circle = `Select ST_MinimumBoundingCircle( ST_Collect(ST_GeomFromText('LINESTRING(${line})', 4326)), 2 ) as circle`;
 

@@ -2,14 +2,26 @@
 
 ## 统一说明
 
-    POST 请求类型均为 json 数据格式，需要添加在请求中添加 header 字段：Content-Type: application/json
+### 字符集
+
+UTF-8
+
+### 坐标系
+
+采用大地坐标系 4326 http://epsg.io/4326
+
+### 接口请求
+
+POST 请求类型均为 json 数据格式，需要添加在请求中添加 header 字段：
+
+Content-Type: application/json
 
 `POI` 对象数据格式说明，下文中使用 `{POI}` 来表示该对象
 
 ```json
 {
     "source_id": 1, // int类型
-    "source_type": "xxx", // string类型
+    "source_type": null,
     "tags": {
         // JSON类型
         "level": "AAAA",
@@ -20,6 +32,14 @@
     "lng": 120.1234 // float类型
 }
 ```
+
+POI 对象字段说明
+
+-   source_id：int 类型，对应的源信息的 id
+-   source_type: string 类型，保留字段，暂不使用
+-   lat：float 类型，纬度
+-   lng：float 类型，精度
+-   tags：JSON 类型，**只支持一级深度**，用来保存景点的外部信息，查询时会如实返回 tags 内所有内容，同时支持 tags 的按全等匹配条件查询
 
 ## POI 管理接口
 
@@ -38,19 +58,22 @@ URL 参数
 
 ```json
 {
-    "pageNum": 1,
-    "pageSize": 2,
-    "totalCount": 17176,
-    "points": ["{POI}"]
+    "code": 200,
+    "data": {
+        "pageNum": 1,
+        "pageSize": 2,
+        "totalCount": 17176,
+        "points": ["{POI}", "{POI}"]
+    }
 }
 ```
 
-示例
+请求实例
 
 ```shell
 curl "http://localhost:3000/poi/list?pageNum=1&pageSize=2"
 
-# {"pageNum":0,"pageSize":2,"totalCount":17176,"pois":[{"id":2,"source_id":2,"source_type":null,"tags":{"name":"仁龙坝冰川","rank":0,"name_en":"renlongba"},"lat":29.288548,"lng":96.929896},{"id":3,"source_id":3,"source_type":null,"tags":{"name":"格聂之眼","rank":0,"name_en":"niegezhiyan"},"lat":29.80845,"lng":99.605095}]}
+# {"code":200,"data":{"pageNum":0,"pageSize":2,"totalCount":17172,"pois":[{"id":1,"source_id":1,"source_type":null,"tags":{"city":"丁青县","name":"孜珠寺","rank":0,"name_en":"zizhusi","province":"西藏自治区"},"lat":95.859511,"lng":31.240949},{"id":2,"source_id":2,"source_type":null,"tags":{"city":"八宿县","name":"仁龙坝冰川","rank":0,"name_en":"renlongba","province":"西藏自治区"},"lat":29.288548,"lng":96.929896}]}}
 ```
 
 ### 查询某一个点
@@ -59,7 +82,7 @@ curl "http://localhost:3000/poi/list?pageNum=1&pageSize=2"
 
     GET /poi/:id
 
-参数
+URL 参数
 
     id：POI的id
 
@@ -67,13 +90,24 @@ curl "http://localhost:3000/poi/list?pageNum=1&pageSize=2"
 
 ```json
 {
-    "id": 2,
-    "source_id": 2,
-    "source_type": null,
-    "tags": { "name": "仁龙坝冰川", "rank": 0, "name_en": "renlongba" },
-    "updated_at": "2020-03-31T03:55:18.760Z",
-    "lat": 29.288548,
-    "lng": 96.929896
+    "code": 200,
+    "data": {
+        "poi": {
+            "id": 2,
+            "source_id": 2,
+            "source_type": null,
+            "tags": {
+                "city": "八宿县",
+                "name": "仁龙坝冰川",
+                "rank": 0,
+                "name_en": "renlongba",
+                "province": "西藏自治区"
+            },
+            "updated_at": "2020-04-05T21:59:46.555Z",
+            "lat": 29.288548,
+            "lng": 96.929896
+        }
+    }
 }
 ```
 
@@ -81,7 +115,7 @@ curl "http://localhost:3000/poi/list?pageNum=1&pageSize=2"
 
 ```shell
 curl "http://localhost:3000/poi/2"
-# {"id":2,"source_id":2,"source_type":null,"tags":{"name":"仁龙坝冰川","rank":0,"name_en":"renlongba"},"updated_at":"2020-03-31T03:55:18.760Z","lat":29.288548,"lng":96.929896}
+# {"code":200,"data":{"poi":{"id":2,"source_id":2,"source_type":null,"tags":{"city":"八宿县","name":"仁龙坝冰川","rank":0,"name_en":"renlongba","province":"西藏自治区"},"updated_at":"2020-04-05T21:59:46.555Z","lat":29.288548,"lng":96.929896}}}
 ```
 
 #### 删除一个点
@@ -92,14 +126,19 @@ curl "http://localhost:3000/poi/2"
 
 URL 参数
 
--   id：POI 的 id（注意，不是 source_id）
+-   id：POI 的 id,**注意，不是 source_id**
 
-返回：无
+返回
+
+```json
+{ "code": 200 }
+```
 
 示例
 
 ```shell
 curl -X POST "http://localhost:3000/poi/2/delete"
+# {"code":200}
 ```
 
 #### 更新一个点
@@ -116,7 +155,11 @@ Body 参数
 
 -   {POI}
 
-返回：无
+返回
+
+```json
+{ "code": 200 }
+```
 
 示例
 
@@ -137,7 +180,10 @@ Body 参数
 返回
 
 ```json
-{ "id": 1 }
+{
+    "data": { "id": 17173 },
+    "code": 200
+}
 // 返回新创建的POI的id
 ```
 
@@ -170,7 +216,11 @@ curl -X POST "http://localhost:3000/poi/create" -H "Content-Type: application/js
     ],
     "distance": 10000,
     "pageSize": 4,
-    "pageNum": 1
+    "pageNum": 1,
+    "filter": {
+        "rank": 0,
+        "city": "北京"
+    }
 }
 ```
 
@@ -182,6 +232,7 @@ curl -X POST "http://localhost:3000/poi/create" -H "Content-Type: application/js
 -   distance：路径附近景点的搜索距离，可选参数，默认值 10000，单位米
 -   mode：图形检索模式，可选参数，枚举类型 polylineBuffer/bundingCircle，默认 auto
 -   filter：用于过滤标签，只选择完全等于标签的景点对象，可选参数，默认 {}
+-   filterType: 标记 filter 的检索关系，只有两种类型 or 或者 and，默认是 and
 -   debug: 返回更多调试信息，可选参数，默认值 false，注意：打开后会导致接口效率下降 1.5 倍左右
 
 返回

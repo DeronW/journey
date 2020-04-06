@@ -61,7 +61,7 @@ function Q1() {
     let form;
     try {
         form = JSON.parse($("#f1").val());
-        form.debug = true
+        form.debug = true;
     } catch (e) {
         $("#r1").text(JSON.stringify(e));
         return;
@@ -74,6 +74,7 @@ function Q1() {
         data: JSON.stringify(form),
         dataType: "json",
         success: function (data) {
+            data = data.data;
             drawPolygon(data.debug.polygon);
             drawMarkers(data.pois);
             $("#r1").text(JSON.stringify(data.pois, null, 4));
@@ -82,9 +83,9 @@ function Q1() {
             delete info.pois;
             $("#r2").text(JSON.stringify(info, null, 4));
         },
-        fail: function(e){
-            console.log(e)
-        }
+        fail: function (e) {
+            console.log(e);
+        },
     });
 
     drawPolyline(form.points);

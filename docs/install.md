@@ -19,26 +19,44 @@ sudo apt update
 sudo apt upgrade
 sudo apt intall docker docker-compose
 cd /srv
-sudo mkdir mypoi
+sudo mkdir poi
+cd poi
+# 创建 docker-compose 文件
+touch docker-compose.yml
+# 创建配置文件
+touch postgis.env
 sudo chown -R www.wwww mypoi
 ```
 
-### 安装方法（一）
+#### docker-compose.yml 示例
 
-源码安装
-
-```shell
-cd /srv/mypoi
-# copy src code to current path
-docker-compose up
+```yaml
+version: "3"
+services:
+    web:
+        image: delongw/tortuous:{TAG}
+        restart: always
+        ports: 
+            - "3000:3000"
+        depends_on:
+            - "postgis"
+        env_file: postgres.env
+    postgis:
+        image: postgis/postgis:11-3.0-alpine
+        restart: always
+        ports: 
+            - "5432:5432"
+        env_file: postgres.env
 ```
 
-### 安装方法（二）
+web的docker镜像配置需要修改成自己配置和
 
-Docker镜像
+#### postgis.env 示例
 
-```shell
-cd /srv/mypoi
-# self define docker-compose.yml file
-docker-compose up
+```text
+# define PostGIS env
+POSTGRES_PASSWORD=mysecretpassword
+POSTGRES_USER=postgres
+POSTGRES_DB=postgres
+POSTGRES_HOST=postgis
 ```
