@@ -1,9 +1,7 @@
 const ENV = require("./env");
 const pgp = require("pg-promise")();
-const fs = require("fs");
-const csv = require("fast-csv");
-const xml2js = require("xml2js");
 const logger = require("./getlogger")("db");
+const utils = require("./utils");
 
 const DATABASE_CONFIG = {
     host: ENV.POSTGIS.HOST,
@@ -110,35 +108,20 @@ async function createTable() {
 }
 
 async function importScenicPoints() {
-    let rows = await new Promise(function (resolve, reject) {
-        let rows = [];
-        fs.createReadStream(`${__dirname}/fixtures/points.csv`)
-            .pipe(csv.parse({ headers: true }))
-            .on("error", (error) => reject(error))
-            .on("data", (row) => rows.push(row))
-            .on("end", (rowCount) => {
-                resolve(rows);
-            });
-    });
+    let rows = await utils.getPOIs();
 
     await db.none(`Delete From POI`);
 
-    let values = rows.map((i) => {
-        let source_id = parseInt(i.scenic_id),
-            lat = parseFloat(i.lat),
-            lng = parseFloat(i.lng),
-            tags = JSON.stringify({
-                name: i.scenic_name,
-                rank: parseInt(i.rank),
-                name_en: i.english,
-            }).replace(/'/g, "''"),
-            point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
-        if (isNaN(lat) || isNaN(lng) || isNaN(i.rank)) return null;
-        return `(${source_id}, '${tags}', ${point}, now())`;
-    });
-    values = values.filter((i) => !!i).join(",");
+    let values = rows
+        .map((i) => {
+            let { source_id, tagsJSON, lat, lng } = i;
+            let point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
+            return `(${source_id}, '${tagsJSON}', ${point}, now())`;
+        })
+        .join(",");
 
-    await db.none(`Insert Into POI (
+    await db.none(`
+    Insert Into POI (
         source_id, tags, point, updated_at
     ) Values ${values}`);
     await db.none(`Update Setup Set complete=true Where phase='points'`);
@@ -380,33 +363,14 @@ async function importChinaRegion() {
 }
 
 async function importStateRegion() {
-    function importBundary(code, name, ring) {
-        const LIMIT = 200;
-        let points = ring.split(","),
-            juncturePoint = points[0];
-        points.pop(); // MUST drop the last point
-        let step = Math.ceil(points.length / LIMIT);
-        if (step > 1) border = points.filter((_, index) => index % step == 0);
-        else border = points;
-        border.push(juncturePoint);
-        border = border.join(",");
+    let bundaries = await utils.getProvincesBundary();
+    for (let i = 0; i < bundaries.length; i++) {
+        let { code, name, rings } = bundaries[i],
+            border = rings.join(",");
 
-        return db.none(
+        await db.none(
             `insert into Region (code, name, border) values ('${code}','${name}', ST_GeomFromText('POLYGON((${border}))', 4326))`
         );
-    }
-
-    let content = await new Promise((resolve, reject) => {
-        fs.readFile(`${__dirname}/fixtures/bundary.xml`, (err, data) =>
-            err ? reject(err) : resolve(data)
-        );
-    });
-
-    let bundary = await xml2js.parseStringPromise(content);
-    let provinces = bundary.Country.province;
-    for (let i = 0; i < provinces.length; i++) {
-        let { code, name, rings } = provinces[i].$;
-        if (rings) await importBundary(code, name, rings);
     }
 }
 
