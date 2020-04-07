@@ -21,7 +21,6 @@ Content-Type: application/json
 ```json
 {
     "source_id": 1, // int类型
-    "source_type": null,
     "tags": {
         // JSON类型
         "level": "AAAA",
@@ -35,11 +34,11 @@ Content-Type: application/json
 
 POI 对象字段说明
 
--   source_id：int 类型，对应的源信息的 id
--   source_type: string 类型，保留字段，暂不使用
--   lat：float 类型，纬度
--   lng：float 类型，精度
--   tags：JSON 类型，**只支持一级深度**，用来保存景点的外部信息，查询时会如实返回 tags 内所有内容，同时支持 tags 的按全等匹配条件查询
+-   source_id：int 类型，必选参数，对应的源信息的 id
+-   source_type: string 类型，可选参数，保留字段，暂不使用
+-   lat：float 类型，必选参数，纬度
+-   lng：float 类型，必选参数，精度
+-   tags：JSON 类型，可选参数，**只支持一级深度**，用来保存景点的外部信息，查询时会如实返回 tags 内所有内容，同时支持 tags 的按全等匹配条件查询
 
 ## POI 管理接口
 
@@ -80,11 +79,11 @@ curl "http://localhost:3000/poi/list?pageNum=1&pageSize=2"
 
 请求
 
-    GET /poi/:id
+    GET /poi/info?source_id=1
 
 URL 参数
 
-    id：POI的id
+-   source_id：景点信息的 id
 
 返回
 
@@ -93,7 +92,6 @@ URL 参数
     "code": 200,
     "data": {
         "poi": {
-            "id": 2,
             "source_id": 2,
             "source_type": null,
             "tags": {
@@ -103,7 +101,6 @@ URL 参数
                 "name_en": "renlongba",
                 "province": "西藏自治区"
             },
-            "updated_at": "2020-04-05T21:59:46.555Z",
             "lat": 29.288548,
             "lng": 96.929896
         }
@@ -114,7 +111,7 @@ URL 参数
 示例：
 
 ```shell
-curl "http://localhost:3000/poi/2"
+curl "http://localhost:3000/poi/info?source_id=2"
 # {"code":200,"data":{"poi":{"id":2,"source_id":2,"source_type":null,"tags":{"city":"八宿县","name":"仁龙坝冰川","rank":0,"name_en":"renlongba","province":"西藏自治区"},"updated_at":"2020-04-05T21:59:46.555Z","lat":29.288548,"lng":96.929896}}}
 ```
 
@@ -122,11 +119,11 @@ curl "http://localhost:3000/poi/2"
 
 请求
 
-    POST /poi/:id/delete
+    POST /poi/delete?source_id=1
 
 URL 参数
 
--   id：POI 的 id,**注意，不是 source_id**
+-   source_id：景点信息的 id
 
 返回
 
@@ -137,7 +134,7 @@ URL 参数
 示例
 
 ```shell
-curl -X POST "http://localhost:3000/poi/2/delete"
+curl -X POST "http://localhost:3000/poi/delete?source_id=1"
 # {"code":200}
 ```
 
@@ -145,11 +142,7 @@ curl -X POST "http://localhost:3000/poi/2/delete"
 
 请求
 
-    POST /poi/:id/update
-
-URL 参数
-
--   id：POI 的 id（注意，不是 source_id）
+    POST /poi/update
 
 Body 参数
 
@@ -164,7 +157,7 @@ Body 参数
 示例
 
 ```shell
-curl -X POST "http://localhost:3000/poi/2/update" -H "Content-Type: application/json" --data '{"source_id": -1, "lat": 1, "lng": 1}'
+curl -X POST "http://localhost:3000/poi/update" -H "Content-Type: application/json" --data '{"source_id": -1, "lat": 1, "lng": 1}'
 ```
 
 ##### 创建一个点
@@ -181,7 +174,7 @@ Body 参数
 
 ```json
 {
-    "data": { "id": 17173 },
+    "data": { "source_id": 17173 },
     "code": 200
 }
 // 返回新创建的POI的id

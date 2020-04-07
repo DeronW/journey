@@ -36,7 +36,7 @@ services:
     web:
         image: delongw/tortuous:{TAG}
         restart: always
-        ports: 
+        ports:
             - "3000:3000"
         depends_on:
             - "postgis"
@@ -44,12 +44,12 @@ services:
     postgis:
         image: postgis/postgis:11-3.0-alpine
         restart: always
-        ports: 
+        ports:
             - "5432:5432"
         env_file: postgres.env
 ```
 
-web的docker镜像配置需要修改成自己配置和
+web 的 docker 镜像配置需要修改成自己配置和
 
 #### postgis.env 示例
 
@@ -59,4 +59,47 @@ POSTGRES_PASSWORD=mysecretpassword
 POSTGRES_USER=postgres
 POSTGRES_DB=postgres
 POSTGRES_HOST=postgis
+```
+
+# Quick Deploy
+
+apply a Ubuntu18 OS, and then just copy the shell and run
+
+```shell
+apt update
+apt upgrade
+apt install docker
+apt install docker-compose
+cd /srv
+if [ ! -d "./poi" ];then
+    rm -r poi
+fi
+mkdir poi
+cd poi
+cat > docker-compose.yml << EOF
+version: "3"
+services:
+    web:
+        image: delongw/tortuous:0.9
+        restart: always
+        ports:
+            - "3000:3000"
+        depends_on:
+            - "postgis"
+        env_file: postgres.env
+    postgis:
+        image: postgis/postgis:11-3.0-alpine
+        restart: always
+        ports:
+            - "5432:5432"
+        env_file: postgres.env
+EOF
+cat > postgis.env << EOF
+POSTGRES_PASSWORD=mysecretpassword
+POSTGRES_USER=postgres
+POSTGRES_DB=postgres
+POSTGRES_HOST=postgis
+EOF
+docker stop $(docker ps -aq)
+docker-compose -p poi up -d
 ```

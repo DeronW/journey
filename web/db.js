@@ -99,6 +99,8 @@ async function createTable() {
         `,
         `Create Index region_gis_index On Region USING GIST(border)`,
         `Create Index poi_gis_index On POI USING GIST(point)`,
+        `Create Index poi_source_id_index On POI USING HASH(source_id)`,
+        `Create UNIQUE Index poi_source_id_source_type_unique On POI (source_id, source_type)`,
         `Create Index poi_tags_jsonb_index On POI USING GIN(tags)`,
     ];
     await resetAll();
@@ -149,48 +151,6 @@ function isTransboundary(points) {
         From (SELECT border FROM region WHERE code = '86') as bundary
         `;
     return db.one(sql);
-}
-
-function calculateCarpet(points) {
-    let multiPolygon = [];
-
-    function singlePointRect({ lat, lng, radius }) {
-        let D = radius;
-        return [
-            { lat: lat - D, lng: lng + D },
-            { lat: lat + D, lng: lng + D },
-            { lat: lat + D, lng: lng - D },
-            { lat: lat - D, lng: lng - D },
-        ];
-    }
-
-    for (let i = 1; i < points.length; i++) {
-        let p1 = points[i - 1],
-            p2 = points[i],
-            D1 = p1.radius,
-            D2 = p2.radius;
-        let a = Math.abs(p2.lat - p1.lat),
-            b = Math.abs(p2.lng - p1.lng),
-            c = Math.sqrt(a * a + b * b);
-        if (c == 0) {
-            // c will equal 0 only when p1 equal p2
-            multiPolygon.push(singlePointRect(p1));
-            continue;
-        }
-        let sinα = a / c,
-            cosα = b / c;
-
-        multiPolygon.push([
-            { lat: p1.lat + cosα * D1, lng: p1.lng - sinα * D1 },
-            { lat: p2.lat + cosα * D2, lng: p2.lng - sinα * D2 },
-            { lat: p2.lat - cosα * D2, lng: p2.lng + sinα * D2 },
-            { lat: p1.lat - cosα * D1, lng: p2.lng + sinα * D1 },
-        ]);
-    }
-
-    if (points.length == 1) multiPolygon.push(singlePointRect(points[0]));
-
-    return multiPolygon;
 }
 
 function replacePointWithLatlng(poi) {
@@ -248,7 +208,8 @@ async function queryPOIsWithPolylineBuffer(
                 Select count(*) 
                 From (
                     Select ST_Contains(buffer, point) 
-                    From POI, (${buffer}) as buffer ) as tbl
+                    From POI, (${buffer}) as buffer 
+                    Where ${tagsCnd}) as tbl
                 Where tbl.st_contains = true
                 `
                 )
@@ -334,8 +295,9 @@ async function queryPOIsWithBoundingCircle(
             Select count(*) 
             From (
                 Select ST_Contains(circle, point) 
-                From POI, (${circle}) as circle ) as tbl
-            Where tbl.st_contains = true And ${tagsCnd}
+                From POI, (${circle}) as circle 
+                Where ${tagsCnd}) as tbl
+            Where tbl.st_contains = true
             `
                 )
                 .then((r) => parseInt(r.count));
@@ -358,12 +320,6 @@ async function queryPOIsWithBoundingCircle(
         pois,
         totalCount,
     };
-}
-
-async function threadLock(seconds) {
-    let r = await db.one("Select now()");
-    let t = await new Promise((r) => setTimeout(r, seconds * 1000));
-    return [r, t];
 }
 
 async function importRegionBundary() {
@@ -421,9 +377,14 @@ const POI = {
             });
         pois.map((i) => replacePointWithLatlng(i));
 
+        pois.map((i) => {
+            delete i.id;
+            delete i.updated_at;
+        });
+
         return { pois, totalCount };
     },
-    create: function (source_id, source_type = null, tags = {}, lat, lng) {
+    create: function (source_id, source_type = "default", tags = {}, lat, lng) {
         let tagsField = JSON.stringify(tags).replace(/'/g, "''");
         let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
         return db
@@ -431,37 +392,44 @@ const POI = {
                 `
             Insert Into POI 
             (source_id, source_type, tags, point, updated_at) 
-            Values ( ${source_id}, ${source_type}, '${tagsField}', ${ST_Point}, now() ) 
+            Values ( ${source_id}, '${source_type}', '${tagsField}', ${ST_Point}, now() ) 
             Returning id`
             )
             .then((r) => r.id);
     },
-    update: function (id, source_id, source_type = null, tags = {}, lat, lng) {
+    update: function (sourceId, sourceType = null, tags = {}, lat, lng) {
         let tagsField = JSON.stringify(tags).replace(/'/g, "''");
         let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
+        let typeCnd = sourceType ? ` And source_type=${sourceType}` : "";
 
         return db.none(`
         Update POI Set
-            source_id=${source_id},
-            source_type=${source_type},
             tags='${tagsField}',
             point=${ST_Point},
             updated_at=now()
-        Where id=${id}`);
+        Where source_id=${sourceId} ${typeCnd}`);
     },
-    delete: (id) => db.none(`Delete From POI Where id=${id}`),
-    info: async function (id) {
+    delete: (sourceId, sourceType) => {
+        let typeCnd = sourceType ? ` And source_type=${sourceType}` : "";
+        return db.none(
+            `Delete From POI Where source_id=${sourceId} ${typeCnd}`
+        );
+    },
+    info: async function (sourceId, sourceType) {
+        let typeCnd = sourceType ? ` And source_type=${sourceType}` : "";
         let poi = await db
             .one(
                 `
             Select *, ST_AsText(point) as point 
-            From POI Where id=${id}`
+            From POI Where source_id=${sourceId} ${typeCnd}`
             )
             .catch((err) => {
                 if (isNoData(err)) return false;
                 else throw err;
             });
         if (poi) replacePointWithLatlng(poi);
+        delete poi.id;
+        delete poi.updated_at;
         return poi;
     },
 };
@@ -476,8 +444,6 @@ module.exports = {
     querySetup,
     resetAll,
     isTransboundary,
-    threadLock,
-    calculateCarpet,
     queryPOIsWithPolylineBuffer,
     queryPOIsWithBoundingCircle,
 };

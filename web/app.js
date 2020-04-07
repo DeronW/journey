@@ -55,27 +55,39 @@ app.post("/poi/create", async (req, res) => {
     let { source_id, source_type, tags, lat, lng } = req.body;
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
-    let id = await db.POI.create(source_id, source_type, tags, lat, lng);
-    res.json({ data: { id }, code: 200 });
+
+    try {
+        await db.POI.create(source_id, source_type, tags, lat, lng);
+    } catch (e) {
+        let errmsg =
+            e.code == "23505" ? "source_id, source_type already exist" : e;
+        return res.json({
+            code: 400,
+            errmsg,
+        });
+    }
+    res.json({ data: { source_id }, code: 200 });
 });
 
-app.post("/poi/:id/delete", async (req, res) => {
-    await db.POI.delete(req.params.id);
+app.post("/poi/delete", async (req, res) => {
+    let { source_type, source_id } = req.query;
+    await db.POI.delete(source_id, source_type);
     res.json({ code: 200 });
 });
 
-app.post("/poi/:id/update", async (req, res) => {
+app.post("/poi/update", async (req, res) => {
     let { source_id, source_type, tags, lat, lng } = req.body;
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
-    db.POI.update(req.params.id, source_id, source_type, tags, lat, lng);
+    db.POI.update(source_id, source_type, tags, lat, lng);
     return res.json({ code: 200 });
 });
 
-app.get("/poi/:id", async (req, res) => {
-    let poi = await db.POI.info(req.params.id);
+app.get("/poi/info", async (req, res) => {
+    let { source_type, source_id } = req.query;
+    let poi = await db.POI.info(source_id, source_type);
     if (poi) res.json({ code: 200, data: { poi } });
-    else res.status(404).end();
+    else res.status(404).json({ code: 404 });
 });
 
 app.post("/admin/create-table", async (req, res) => {
