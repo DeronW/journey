@@ -2,6 +2,6 @@
 
 ```shell
 
-docker-compose -p mypoi up -d
+docker-compose -p poi up -d
 
 ```

@@ -8,7 +8,6 @@ class UserBehaviour(TaskSet):
     def aggregate(self):
         self.client.post(
             "/aggregate",
-            # headers={"Content-Type": "application/json"},
             json={"points": [{"lat": 39, "lng": 120}, {"lat": 32, "lng": 110}]},
         )
 

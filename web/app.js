@@ -7,6 +7,9 @@ const MAINLAND_BUNDARY = require("./fixtures/mainland");
 
 const app = express();
 const db = require("./db");
+const POI = require("./poi");
+const admin = require("./admin");
+const aggregate = require("./aggregate");
 const logger = require("./getlogger")("app");
 const UP_TIME = new Date();
 
@@ -35,7 +38,7 @@ app.get("/toolkit", async (req, res) => {
 
     let database = JSON.parse(JSON.stringify(db.DATABASE_CONFIG));
     database.connection = (await db.testConnection()) ? "success" : "failed";
-    let initialization = await db.querySetup();
+    let initialization = await admin.querySetup();
     res.render("index.hbs", {
         database,
         upTime: `${days}d ${hours}h ${minutes}m`,
@@ -47,7 +50,10 @@ app.get("/poi/list", async (req, res) => {
     let { pageNum, pageSize } = req.query;
     pageSize = parseInt(pageSize) || 20;
     pageNum = (parseInt(pageNum) || 1) - 1;
-    let { pois, totalCount } = await db.POI.list(pageNum, pageSize);
+    let { pois, totalCount } = await POI.list(pageNum, pageSize);
+    pois.map((i) => {
+        if (!i.source_type) delete i.source_type;
+    });
     res.json({ code: 200, data: { pageNum, pageSize, totalCount, pois } });
 });
 
@@ -57,21 +63,17 @@ app.post("/poi/create", async (req, res) => {
         return res.status(400).end("wrong params");
 
     try {
-        await db.POI.create(source_id, source_type, tags, lat, lng);
+        let id = await POI.create(source_id, source_type, tags, lat, lng);
     } catch (e) {
-        let errmsg =
-            e.code == "23505" ? "source_id, source_type already exist" : e;
-        return res.json({
-            code: 400,
-            errmsg,
-        });
+        if (e.code == "23505")
+            return res.status(409).end("source_id already exist");
     }
     res.json({ data: { source_id }, code: 200 });
 });
 
 app.post("/poi/delete", async (req, res) => {
     let { source_type, source_id } = req.query;
-    await db.POI.delete(source_id, source_type);
+    await POI.remove(source_id, source_type);
     res.json({ code: 200 });
 });
 
@@ -79,34 +81,37 @@ app.post("/poi/update", async (req, res) => {
     let { source_id, source_type, tags, lat, lng } = req.body;
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
-    db.POI.update(source_id, source_type, tags, lat, lng);
+    POI.update(source_id, source_type, tags, lat, lng);
     return res.json({ code: 200 });
 });
 
 app.get("/poi/info", async (req, res) => {
     let { source_type, source_id } = req.query;
-    let poi = await db.POI.info(source_id, source_type);
-    if (poi) res.json({ code: 200, data: { poi } });
-    else res.status(404).json({ code: 404 });
+    let poi = await POI.info(source_id, source_type);
+
+    if (poi) {
+        delete poi.source_type;
+        res.json({ code: 200, data: poi });
+    } else res.status(404).end(`source_id ${source_id} not exist`);
 });
 
 app.post("/admin/create-table", async (req, res) => {
-    await db.createTable();
+    await admin.createTable();
     res.end();
 });
 
 app.post("/admin/import-china-bundary", async (req, res) => {
-    await db.importRegionBundary();
+    await admin.importRegionBundary();
     res.end();
 });
 
 app.post("/admin/import-scennic-points", async (req, res) => {
-    await db.importScenicPoints();
+    await admin.importScenicPoints();
     res.end();
 });
 
 app.post("/admin/reset-all", async (req, res) => {
-    await db.resetAll();
+    await admin.resetAll();
     res.end();
 });
 
@@ -116,22 +121,25 @@ app.get("/admin/bundary/china", (req, res) => {
 
 app.post("/aggregate", async (req, res) => {
     let {
-            distance = 10000,
-            points = [],
-            pageNum = 1,
-            pageSize = 1000,
-            mode = "auto",
-            filter = null,
-            autoEnlarge = false,
-            filterType = "and",
-            debug = false,
-        } = req.body,
-        startAt = new Date().getTime();
+        distance = 10000,
+        points = [],
+        pageNum = 1,
+        pageSize = 1000,
+        mode = "auto",
+        filter = null,
+        filterType = "and",
+        shrink = 1,
+        debug = false,
+    } = req.body;
 
     if (points.length == 0)
-        return res.status(400).end("point should not be empty");
+        return res.status(400).end("illegal: points should not be empty");
     if (pageNum < 1 || pageSize < 1)
-        return res.status(400).end("pageNum & pageSize wrong");
+        return res.status(400).end("illegal: pageNum & pageSize wrong");
+    if (["auto", "polylineBuffer", "bundingCircle"].indexOf(mode) < 0)
+        return res.status(400).end("illegal: wrong mode ");
+    if (shrink > 1 || shrink < 0)
+        return res.status(400).end("illegal: shrink should be > 0 and < 1");
 
     for (let i = 0; i < points.length; i++) {
         let { lat, lng } = points[i];
@@ -139,36 +147,18 @@ app.post("/aggregate", async (req, res) => {
             return res.status(400).end("wrong parameters");
     }
 
-    if (mode == "auto") mode = "polylineBuffer";
-    let result;
-    if (mode == "polylineBuffer") {
-        result = await db.queryPOIsWithPolylineBuffer(
-            points,
-            distance,
-            pageNum,
-            pageSize,
-            filter,
-            filterType,
-            debug
-        );
-    } else if (mode == "bundingCircle") {
-        result = await db.queryPOIsWithBoundingCircle(
-            points,
-            pageNum,
-            pageSize,
-            filter,
-            filterType,
-            debug
-        );
-    } else return res.status(400).end("wrong mode parameter");
-    let { pois, polygon, totalCount } = result;
-    let data = { pageSize, pageSize, pois, totalCount };
-    if (debug)
-        data.debug = {
-            polygon,
-            transboundary: await db.isTransboundary(points),
-            duration: new Date().getTime() - startAt + "ms",
-        };
+    let data = await aggregate.smartQuery({
+        mode,
+        points,
+        distance,
+        pageNum,
+        pageSize,
+        filter,
+        filterType,
+        shrink,
+        debug,
+    });
+
     res.json({ code: 200, data });
 });
 

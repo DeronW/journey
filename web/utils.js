@@ -71,8 +71,6 @@ async function getPOIs() {
     rows = rows.map((i) => {
         let tags = {
             name: i.scenic_name,
-            name_en: i.english,
-            rank: parseInt(i.rank),
         };
         let postcode = i.area_recall.split(",").pop();
         if (postcode) {
@@ -94,9 +92,19 @@ async function getPOIs() {
     return rows;
 }
 
+function replacePointWithLatlng(poi) {
+    let fix6 = (f) => parseInt(parseFloat(f) * 1000000) / 1000000;
+    let t = poi.point.substr(6, poi.point.length - 6).split(" "),
+        lat = fix6(t[1]),
+        lng = fix6(t[0]);
+    delete poi.point;
+    poi.lat = lat;
+    poi.lng = lng;
+    return poi;
+}
+
 module.exports = {
     getProvincesBundary,
     getPOIs,
+    replacePointWithLatlng,
 };
-
-getPOIs();

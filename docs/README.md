@@ -17,6 +17,8 @@ TODO: 算法需要优化说明
 
 查看 install.md
 
+### 初始化数据
+
 ### 任务列表
 
 -   [x] PostGIS
@@ -51,26 +53,7 @@ TODO: 算法需要优化说明
 
 交付内容
 
--   [ ] 全部源码
--   [ ] 测试结果
--   [ ] 安装说明文档
+-   [x] 全部源码
+-   [x] 测试结果
+-   [x] 安装说明文档
 -   [ ] 项目人工交接
-
-### References
-
-GIS Type
-https://postgis.net/docs/manual-3.0/using_postgis_dbmanagement.html#Geography_Basics
-
-PostGIS ST\_\* functions
-https://postgis.net/docs/manual-1.5/ch08.html
-
-Core query function, ST_Buffer
-https://postgis.net/docs/manual-1.5/ST_Buffer.html
-
-大地坐标系 4326
-http://epsg.io/4326
-
-在线地图使用的坐标系 3857
-http://epsg.io/3857 伪墨卡托投影
-
-当前项目使用的坐标系：**4326** GCS_WGS_1984
