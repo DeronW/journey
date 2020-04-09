@@ -1,5 +1,6 @@
 const { one, none, many, isNoData } = require("./db");
 const utils = require("./utils");
+const cache = require("./cache");
 
 function convertFilterToConditions(filter, filterType) {
     let tagsCnd = "True";
@@ -36,19 +37,12 @@ function isTransboundary(points) {
     return one(sql);
 }
 
-function assembleSqlStatements({
-    mode,
-    points,
-    distance,
-    pageNum,
-    pageSize,
-    filter,
-    filterType,
-    shrink,
-}) {
+async function enclosurePolygon({ points, mode, distance, shrink }) {
     let line = points.map((i) => `${i.lng} ${i.lat}`).join(","),
-        offset = (pageNum - 1) * pageSize;
+        key = `${mode}-${distance}-${shrink}-${line}`;
+    if (cache.get(key)) return cache.get(key);
 
+    let polygon;
     if (mode == "polylineBuffer") {
         // https://postgis.net/docs/ST_Buffer.html
         // distance, unit: kilometer
@@ -92,6 +86,21 @@ function assembleSqlStatements({
         throw TypeError(`mode must be 'polylineBuffer' or 'bundingCircle'`);
     }
 
+    let polygonStr = await one(
+        `Select ST_AsText(polygon) as t From (${polygon}) as tbl3`
+    ).then((r) => r.t);
+
+    cache.add(key, polygonStr);
+    return polygonStr;
+}
+
+function assembleSqlStatements({
+    polygon,
+    pageNum,
+    pageSize,
+    filter,
+    filterType,
+}) {
     let tagsCnd = convertFilterToConditions(filter, filterType);
 
     let querySql = `
@@ -101,27 +110,25 @@ function assembleSqlStatements({
         count(*) OVER() AS total_count 
     From (
         Select *, ST_Contains(polygon, point) 
-        From POI, (${polygon}) as polygon ) as tbl
+        From POI, ST_GeomFromText('${polygon}', 4326) as polygon ) as tbl
+        
     Where tbl.st_contains = true And ${tagsCnd}
     Order By id Asc
-    Offset ${offset}
+    Offset ${(pageNum - 1) * pageSize}
     Limit ${pageSize}`;
 
     let countSql = `
     Select count(*) 
     From (
         Select ST_Contains(polygon, point) 
-        From POI, (${polygon}) as polygon 
+        From POI, ST_GeomFromText('${polygon}', 4326) as polygon 
         Where ${tagsCnd}) as tbl
     Where tbl.st_contains = true
     `;
 
-    let polygonSql = `Select ST_AsText(polygon) as polygon From (${polygon}) as tbl`;
-
     return {
         querySql,
         countSql,
-        polygonSql,
     };
 }
 
@@ -140,15 +147,13 @@ async function smartQuery({
 
     if (mode == "auto") mode = "polylineBuffer";
 
-    let { polygonSql, querySql, countSql } = assembleSqlStatements({
-        mode,
-        points,
-        distance,
+    let polygon = await enclosurePolygon({ points, mode, distance, shrink });
+    let { querySql, countSql } = assembleSqlStatements({
+        polygon,
         pageNum,
         pageSize,
         filter,
         filterType,
-        shrink,
     });
 
     let { pois, totalCount } = await many(querySql)
@@ -172,7 +177,7 @@ async function smartQuery({
 
     if (debug) {
         data.debug = {
-            polygon: await one(polygonSql).then((r) => r.polygon),
+            polygon,
             transboundary: await isTransboundary(points),
             duration: new Date().getTime() - startAt + "ms",
         };
