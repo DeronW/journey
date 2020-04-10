@@ -1,5 +1,5 @@
 const { isNoData, one, none, many } = require("./db");
-const { replacePointWithLatlng } = require("./utils");
+const { narrowPOI } = require("./utils");
 
 async function list(pageNum, pageSize) {
     let pois = await many(
@@ -24,12 +24,7 @@ async function list(pageNum, pageSize) {
             if (isNoData(err)) return [];
             else throw err;
         });
-    pois.map((i) => replacePointWithLatlng(i));
-
-    pois.map((i) => {
-        delete i.id;
-        delete i.updated_at;
-    });
+    pois.map((i) => narrowPOI(i));
 
     return { pois, totalCount };
 }
@@ -76,10 +71,7 @@ async function info(sourceId, sourceType) {
         if (isNoData(err)) return false;
         else throw err;
     });
-    if (poi) replacePointWithLatlng(poi);
-    delete poi.id;
-    delete poi.updated_at;
-    return poi;
+    return narrowPOI(poi);
 }
 
 module.exports = {

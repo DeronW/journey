@@ -30,11 +30,10 @@ phase 只有 3 个值
 
 ### POI 表
 
-| 字段名      | 类型     | 用途               |
-| ----------- | -------- | ------------------ |
-| id          | int      | 自增主键           |
-| source_id   | int      | 景点关联主键       |
-| source_type | varchar  | 景点关联类型       |
-| tag         | jsonb    | 标签，用于过滤使用 |
-| point       | geometry | 坐标位置           |
-| updated_at  | time     | 更新时间           |
+| 字段名     | 类型     | 用途               |
+| ---------- | -------- | ------------------ |
+| id         | int      | 自增主键           |
+| source_id  | int      | 景点关联主键       |
+| tag        | jsonb    | 标签，用于过滤使用 |
+| point      | geometry | 坐标位置           |
+| updated_at | time     | 更新时间，自动更新 |

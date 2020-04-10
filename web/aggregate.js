@@ -1,5 +1,5 @@
 const { one, none, many, isNoData } = require("./db");
-const utils = require("./utils");
+const { narrowPOI } = require("./utils");
 const cache = require("./cache");
 
 function convertFilterToConditions(filter, filterType) {
@@ -95,25 +95,31 @@ async function enclosurePolygon({ points, mode, distance, shrink }) {
 }
 
 function assembleSqlStatements({
+    points,
     polygon,
     pageNum,
     pageSize,
     filter,
     filterType,
+    orderBy,
 }) {
-    let tagsCnd = convertFilterToConditions(filter, filterType);
+    let tagsCnd = convertFilterToConditions(filter, filterType),
+        route = points.map((i) => `${i.lng} ${i.lat}`).join(",");
+    if (orderBy == "startPoint")
+        originGeom = `POINT(${points[0].lng} ${points[0].lat})`;
+    if (orderBy == "route") originGeom = `LINESTRING(${route})`;
 
     let querySql = `
     Select 
         source_id, tags, 
         ST_AsText(point) as point,
+        ST_Distance(point, ST_GeomFromText('${originGeom}', 4326)) as distance,
         count(*) OVER() AS total_count 
     From (
         Select *, ST_Contains(polygon, point) 
         From POI, ST_GeomFromText('${polygon}', 4326) as polygon ) as tbl
-        
     Where tbl.st_contains = true And ${tagsCnd}
-    Order By id Asc
+    Order By distance Asc, id Asc
     Offset ${(pageNum - 1) * pageSize}
     Limit ${pageSize}`;
 
@@ -140,6 +146,7 @@ async function smartQuery({
     pageSize,
     filter,
     filterType,
+    orderBy,
     shrink,
     debug,
 }) {
@@ -149,21 +156,19 @@ async function smartQuery({
 
     let polygon = await enclosurePolygon({ points, mode, distance, shrink });
     let { querySql, countSql } = assembleSqlStatements({
+        points,
         polygon,
         pageNum,
         pageSize,
         filter,
         filterType,
+        orderBy
     });
 
     let { pois, totalCount } = await many(querySql)
         .then((points) => {
             let totalCount = parseInt(points[0].total_count);
-            points = points.map((i) => {
-                delete i.total_count;
-                return utils.replacePointWithLatlng(i);
-            });
-            return { pois: points, totalCount };
+            return { pois: points.map((i) => narrowPOI(i)), totalCount };
         })
         .catch(async (err) => {
             if (isNoData(err)) {

@@ -103,8 +103,18 @@ function replacePointWithLatlng(poi) {
     return poi;
 }
 
+function narrowPOI(poi) {
+    if (!poi) return poi;
+    replacePointWithLatlng(poi);
+    delete poi.id;
+    delete poi.updated_at;
+    delete poi.distance;
+    delete poi.total_count;
+    return poi;
+}
+
 module.exports = {
     getProvincesBundary,
     getPOIs,
-    replacePointWithLatlng,
+    narrowPOI,
 };

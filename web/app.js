@@ -128,6 +128,7 @@ app.post("/aggregate", async (req, res) => {
         mode = "auto",
         filter = null,
         filterType = "and",
+        orderBy = "startPoint",
         shrink = 1,
         debug = false,
     } = req.body;
@@ -155,6 +156,7 @@ app.post("/aggregate", async (req, res) => {
         pageSize,
         filter,
         filterType,
+        orderBy,
         shrink,
         debug,
     });
