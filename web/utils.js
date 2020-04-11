@@ -2,7 +2,7 @@ const fs = require("fs");
 const csv = require("fast-csv");
 const xml2js = require("xml2js");
 
-async function getProvincesBundary() {
+async function writeProvincesBundaryFile() {
     function compress(ring) {
         const LIMIT = 200;
         let points = ring.split(","),
@@ -29,7 +29,14 @@ async function getProvincesBundary() {
         if (rings) provinces.push({ code, name, rings: compress(rings) });
     });
 
-    return provinces;
+    return new Promise(function (resolve) {
+        fs.writeFile(
+            `${__dirname}/fixtures/provinces.json`,
+            JSON.stringify(provinces),
+            "utf8",
+            () => resolve()
+        );
+    });
 }
 
 async function getRegionDict() {
@@ -55,7 +62,7 @@ async function getRegionDict() {
     return postcode;
 }
 
-async function getPOIs() {
+async function writePOIsFile() {
     let region = await getRegionDict();
     let rows = await new Promise(function (resolve, reject) {
         let rows = [];
@@ -89,6 +96,15 @@ async function getPOIs() {
 
     rows = rows.filter((i) => !isNaN(i.lat) && !isNaN(i.lng));
 
+    const newStream = fs.createWriteStream("new.csv");
+    const csvStream = csv.format({ headers: true });
+    csvStream.pipe(newStream);
+    rows.forEach((row) => {
+        let { source_id, lat, lng, tags } = row;
+        csvStream.write({ source_id, lat, lng, tags: JSON.stringify(tags) });
+    });
+    csvStream.end();
+
     return rows;
 }
 
@@ -113,8 +129,39 @@ function narrowPOI(poi) {
     return poi;
 }
 
+// run only once, to pickup province bundary and reduce data records
+// writeProvincesBundaryFile()
+// writePOIsFile()
+
+function getProvincesBundary() {
+    return new Promise((resolve, reject) => {
+        fs.readFile(`${__dirname}/fixtures/provinces.json`, (err, data) =>
+            err ? reject(err) : resolve(JSON.parse(String(data)))
+        );
+    });
+}
+
+async function getPOIs() {
+    let rows = await new Promise(function (resolve, reject) {
+        let rows = [];
+        fs.createReadStream(`${__dirname}/fixtures/points.csv`)
+            .pipe(csv.parse({ headers: true }))
+            .on("error", (error) => reject(error))
+            .on("data", (row) => rows.push(row))
+            .on("end", (rowCount) => {
+                resolve(rows);
+            });
+    });
+    return rows;
+}
+
+function tagsToString(tags = {}) {
+    return JSON.stringify(tags).replace(/'/g, "''");
+}
+
 module.exports = {
     getProvincesBundary,
     getPOIs,
     narrowPOI,
+    tagsToString,
 };

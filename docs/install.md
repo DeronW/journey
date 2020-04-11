@@ -25,7 +25,6 @@ yum -y upgrade
 yum -y intall docker docker-compose
 ```
 
-
 ### 创建项目目录
 
 可以选择任意目录，以下为举例说明
@@ -68,7 +67,7 @@ docker-compose ps
 
 # Quick Deploy
 
-快速安装服务，一键部署。首先申请一个独立 ECS 服务器，使用 Ubuntu18.04 版本的操作系统, 然后运行以下脚本服务。**注意**，运行前要把`{WEB_IMAGE}`参数改为对应的镜像版本。这里可以使用 `delongw/tortuous:1.0-beta.5`
+快速安装服务，一键部署。首先申请一个独立 ECS 服务器，使用 Ubuntu18.04 版本的操作系统, 然后运行以下脚本服务。**注意**，运行前要把`web`服务的镜像地址参数改为对应的镜像版本。这里可以使用 `delongw/tortuous:1.0`
 
 ### Ubuntu 版本
 
@@ -92,7 +91,7 @@ cat > docker-compose.yml << EOF
 version: "3"
 services:
     web:
-        image: delongw/tortuous:1.0-beta.5
+        image: delongw/tortuous:1.0
         restart: always
         ports:
             - "3000:3000"
@@ -144,7 +143,7 @@ cat > docker-compose.yml << EOF
 version: "3"
 services:
     web:
-        image: delongw/tortuous:1.0-beta.5
+        image: delongw/tortuous:1.0
         restart: always
         ports:
             - "3000:3000"

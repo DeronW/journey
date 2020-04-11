@@ -30,6 +30,8 @@ app.use(
 
 app.get("/ping", (req, res) => res.send("pong"));
 
+app.get("/", (req, res) => res.redirect("/toolkit"));
+
 app.get("/toolkit", async (req, res) => {
     let upTime = Math.round((new Date() - UP_TIME) / (1000 * 60)),
         days = parseInt(upTime / 60 / 24),

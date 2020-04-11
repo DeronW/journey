@@ -1,18 +1,16 @@
 const { one, none, many, isNoData } = require("./db");
-const { narrowPOI } = require("./utils");
+const { narrowPOI, tagsToString } = require("./utils");
 const cache = require("./cache");
 
 function convertFilterToConditions(filter, filterType) {
     let tagsCnd = "True";
     if (!filter) return tagsCnd;
 
-    let toS = (obj) => JSON.stringify(obj).replace(/'/g, "''");
-
     if (filterType == "and") {
-        tagsCnd = `tags @> '${toS(filter)}'`;
+        tagsCnd = `tags @> '${tagsToString(filter)}'`;
     } else if (filterType == "or") {
         tagsCnd = Object.keys(filter).map(
-            (i) => `tags @> '${toS({ [i]: filter[i] })}'`
+            (i) => `tags @> '${tagsToString({ [i]: filter[i] })}'`
         );
         tagsCnd = `(${tagsCnd.join(" Or ")})`;
     }
@@ -162,7 +160,7 @@ async function smartQuery({
         pageSize,
         filter,
         filterType,
-        orderBy
+        orderBy,
     });
 
     let { pois, totalCount } = await many(querySql)

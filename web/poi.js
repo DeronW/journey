@@ -1,5 +1,5 @@
 const { isNoData, one, none, many } = require("./db");
-const { narrowPOI } = require("./utils");
+const { narrowPOI, tagsToString } = require("./utils");
 
 async function list(pageNum, pageSize) {
     let pois = await many(
@@ -29,7 +29,7 @@ async function list(pageNum, pageSize) {
     return { pois, totalCount };
 }
 function create(source_id, source_type = "default", tags = {}, lat, lng) {
-    let tagsField = JSON.stringify(tags).replace(/'/g, "''");
+    let tagsField = tagsToString(tags);
     let ST_Point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
     return one(
         `
@@ -40,7 +40,7 @@ function create(source_id, source_type = "default", tags = {}, lat, lng) {
     ).then((r) => r.id);
 }
 function update(sourceId, sourceType = "default", tags = {}, lat, lng) {
-    let tagsField = JSON.stringify(tags).replace(/'/g, "''");
+    let tagsField = tagsToString(tags);
     let point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
 
     return none(`

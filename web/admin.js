@@ -57,14 +57,15 @@ async function createTable() {
 
 async function importScenicPoints() {
     let rows = await utils.getPOIs();
+    console.log(rows)
 
     await none(`Delete From POI`);
 
     let values = rows
         .map((i) => {
-            let { source_id, tagsJSON, lat, lng } = i;
+            let { source_id, tags, lat, lng } = i;
             let point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
-            return `(${source_id}, '${tagsJSON}', ${point}, now())`;
+            return `(${source_id}, '${tags}', ${point}, now())`;
         })
         .join(",");
 
