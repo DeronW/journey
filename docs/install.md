@@ -182,7 +182,7 @@ docker run --name gis -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d post
 然后运行 web 服务镜像，此处需要配置环境变量，并选择指定的 web 服务镜像版本
 
 ```shell
-docker run --name poi -p 3000:3000 -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_HOST=localhost -d delongw/tortuous:1.0-beta
+docker run --name poi -p 3000:3000 -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_HOST=localhost -d delongw/tortuous:1.0
 ```
 
 ### 源码安装
