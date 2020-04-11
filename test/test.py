@@ -31,6 +31,9 @@ class TestPOI(unittest.TestCase):
     def test_create(self):
         source_id = 12345678
 
+        r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
+        assert r.status_code, 200
+
         r = requests.post(
             "http://localhost:3000/poi/create",
             json={"source_id": source_id, "lat": 1, "lng": 1},
@@ -71,6 +74,9 @@ class TestPOI(unittest.TestCase):
 
     def test_update(self):
         source_id = 12345678
+
+        r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
+        assert r.status_code, 200
 
         r = requests.post(
             "http://localhost:3000/poi/create",
