@@ -11,11 +11,20 @@
 更新系统，并安装 docker
 
 ```shell
+# ubuntu
 sudo su
 apt update
-apt upgrade
-apt intall docker docker-compose
+apt -y upgrade
+apt -y intall docker docker-compose
 ```
+
+```shell
+# centos
+sudo su
+yum -y upgrade
+yum -y intall docker docker-compose
+```
+
 
 ### 创建项目目录
 
@@ -59,12 +68,20 @@ docker-compose ps
 
 # Quick Deploy
 
-快速安装服务，一键部署。首先申请一个独立 ECS 服务器，使用 Ubuntu18.04 版本的操作系统, 然后运行以下脚本服务。**注意**，运行前要把`{WEB_IMAGE}`参数改为对应的镜像版本。这里可以使用 `delongw/tortuous:1.0-beta.4`
+快速安装服务，一键部署。首先申请一个独立 ECS 服务器，使用 Ubuntu18.04 版本的操作系统, 然后运行以下脚本服务。**注意**，运行前要把`{WEB_IMAGE}`参数改为对应的镜像版本。这里可以使用 `delongw/tortuous:1.0-beta.5`
+
+### Ubuntu 版本
+
+先更新系统软件并安装 docker
 
 ```shell
+sudo su
 apt update
-echo yes | apt upgrade
-echo yes | apt install docker docker-compose
+apt -y upgrade
+apt -y install docker docker-compose
+```
+
+```shell
 cd /srv
 if [ ! -d "./poi" ];then
     rm -r poi
@@ -75,7 +92,59 @@ cat > docker-compose.yml << EOF
 version: "3"
 services:
     web:
-        image: {WEB_IMAGE}
+        image: delongw/tortuous:1.0-beta.5
+        restart: always
+        ports:
+            - "3000:3000"
+        depends_on:
+            - "postgis"
+        env_file: postgres.env
+    postgis:
+        image: postgis/postgis:11-3.0-alpine
+        restart: always
+        ports:
+            - "5432:5432"
+        env_file: postgres.env
+EOF
+cat > postgres.env << EOF
+POSTGRES_PASSWORD=mysecretpassword
+POSTGRES_USER=postgres
+POSTGRES_DB=postgres
+POSTGRES_HOST=postgis
+EOF
+docker stop $(docker ps -aq)
+docker-compose -p poi up -d
+echo complete
+
+```
+
+### CentOS 版本
+
+`CentOS 7.7`
+
+先更新系统软件并安装 docker
+
+```shell
+sudo su
+yum -y upgrade
+yum -y install docker docker-compose
+systemctl start docker
+```
+
+然后再启动服务
+
+```shell
+cd /srv
+if [ -d "./poi" ];then
+    rm -r poi
+fi
+mkdir poi
+cd poi
+cat > docker-compose.yml << EOF
+version: "3"
+services:
+    web:
+        image: delongw/tortuous:1.0-beta.5
         restart: always
         ports:
             - "3000:3000"
