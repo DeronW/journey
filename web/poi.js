@@ -36,8 +36,16 @@ function create(source_id, source_type = "default", tags = {}, lat, lng) {
             Insert Into POI 
             (source_id, source_type, tags, point, updated_at) 
             Values ( ${source_id}, '${source_type}', '${tagsField}', ${ST_Point}, now() ) 
-            Returning id`
-    ).then((r) => r.id);
+            On Conflict(source_id, source_type)
+            Do Nothing
+            Returning id
+            `
+    )
+        .then((r) => r.id)
+        .catch((err) => {
+            if (isNoData(err)) return null;
+            else throw err;
+        });
 }
 function update(sourceId, sourceType = "default", tags = {}, lat, lng) {
     let tagsField = tagsToString(tags);
@@ -48,7 +56,7 @@ function update(sourceId, sourceType = "default", tags = {}, lat, lng) {
         (source_id, source_type, tags, point, updated_at)
     Values
         (${sourceId}, '${sourceType}', '${tagsField}', ${point}, now())
-    On conflict(source_id, source_type)
+    On Conflict(source_id, source_type)
     Do Update 
         Set
             tags='${tagsField}',

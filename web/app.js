@@ -51,8 +51,8 @@ app.get("/toolkit", async (req, res) => {
 app.get("/poi/list", async (req, res) => {
     let { pageNum, pageSize } = req.query;
     pageSize = parseInt(pageSize) || 20;
-    pageNum = (parseInt(pageNum) || 1) - 1;
-    let { pois, totalCount } = await POI.list(pageNum, pageSize);
+    pageNum = parseInt(pageNum) || 1;
+    let { pois, totalCount } = await POI.list(pageNum - 1, pageSize);
     pois.map((i) => {
         if (!i.source_type) delete i.source_type;
     });
@@ -64,13 +64,9 @@ app.post("/poi/create", async (req, res) => {
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
 
-    try {
-        let id = await POI.create(source_id, source_type, tags, lat, lng);
-    } catch (e) {
-        if (e.code == "23505")
-            return res.status(409).end("source_id already exist");
-    }
-    res.json({ data: { source_id }, code: 200 });
+    let id = await POI.create(source_id, source_type, tags, lat, lng);
+    if (id) res.json({ data: { source_id }, code: 200 });
+    else res.status(409).end("source_id already exist");
 });
 
 app.post("/poi/delete", async (req, res) => {
