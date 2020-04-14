@@ -7,15 +7,14 @@ async function querySetup() {
     );
     let steps = {
         tableCreated: false,
-        chinaBoundaryImported: false,
+        boundaryImported: false,
         scenicPointsImported: false,
     };
     if (hasTable) {
         let rows = await many("Select * From Setup");
         rows.forEach((row) => {
             if (row.phase == "table") steps.tableCreated = row.complete;
-            if (row.phase == "bundary")
-                steps.chinaBoundaryImported = row.complete;
+            if (row.phase == "bundary") steps.boundaryImported = row.complete;
             if (row.phase == "points")
                 steps.scenicPointsImported = row.complete;
         });
@@ -36,8 +35,7 @@ async function createTable() {
         `
         CREATE TABLE POI(
             id SERIAL PRIMARY KEY,
-            source_id INT NOT NULL,
-            source_type VARCHAR(32),
+            source_id INT NOT NULL UNIQUE,
             tags JSONB,
             point GEOMETRY(POINT, 4326),
             updated_at timestamp
@@ -46,7 +44,6 @@ async function createTable() {
         `Create Index region_gis_index On Region USING GIST(border)`,
         `Create Index poi_gis_index On POI USING GIST(point)`,
         `Create Index poi_source_id_index On POI USING HASH(source_id)`,
-        `Create UNIQUE Index poi_source_id_source_type_unique On POI (source_id, source_type)`,
         `Create Index poi_tags_jsonb_index On POI USING GIN(tags)`,
     ];
     await resetAll();
@@ -57,7 +54,6 @@ async function createTable() {
 
 async function importScenicPoints() {
     let rows = await utils.getPOIs();
-    console.log(rows)
 
     await none(`Delete From POI`);
 
@@ -109,6 +105,15 @@ async function importRegionBundary() {
     await importChinaRegion();
     await importStateRegion();
 }
+
+async function initialize() {
+    let initialization = await querySetup();
+    if (initialization.tableCreated == false) {
+        await createTable();
+    }
+}
+// check initialze status, run it when server startd
+initialize();
 
 module.exports = {
     querySetup,

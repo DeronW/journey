@@ -10,8 +10,8 @@ function reset() {
 }
 
 function importChinaBundary() {
-    if (!confirm("re-import China bundary?")) return;
-    operate("/admin/import-china-bundary");
+    if (!confirm("re-import bundary?")) return;
+    operate("/admin/import-bundary");
 }
 
 function importScenicPoints() {

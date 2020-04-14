@@ -32,7 +32,10 @@ function isTransboundary(points) {
             ${fragments}
         From (SELECT border FROM region WHERE code = '86') as bundary
         `;
-    return one(sql);
+    return one(sql).catch((err) => {
+        if (isNoData(err)) return null;
+        else throw err;
+    });
 }
 
 async function enclosurePolygon({ points, mode, distance, shrink }) {

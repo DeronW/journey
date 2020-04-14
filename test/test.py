@@ -12,12 +12,61 @@ class TestSpot(unittest.TestCase):
 
 
 class TestCoreAPI(unittest.TestCase):
-    def test_aggregate(self):
+    def test_aggregate_default(self):
         r = requests.post(
             "http://localhost:3000/aggregate",
             json={"points": [{"lat": 1, "lng": 1}, {"lat": 2, "lng": 2}]},
         )
         assert r.status_code == 200
+
+    def test_aggregate_polygon(self):
+        r = requests.post(
+            "http://localhost:3000/aggregate",
+            json={
+                "points": [{"lat": 1, "lng": 1}, {"lat": 2, "lng": 2}],
+                "pageSize": 20,
+                "pageNum": 2,
+                "distance": 9999,
+                "mode": "polylineBuffer",
+                "debug": True,
+            },
+        )
+        assert r.status_code == 200
+
+    def test_aggregate_ellipse(self):
+        r = requests.post(
+            "http://localhost:3000/aggregate",
+            json={
+                "points": [{"lat": 1, "lng": 1}, {"lat": 2, "lng": 2}],
+                "pageSize": 20,
+                "pageNum": 2,
+                "shrink": 0.3,
+                "mode": "bundingCircle",
+                "debug": True,
+            },
+        )
+        assert r.status_code == 200
+
+    def test_aggregate_400(self):
+        r = requests.post(
+            "http://localhost:3000/aggregate",
+            json={
+                "points": [{"lat": 1, "lng": 1}, {"lat": 2, "lng": 2}],
+                "shrink": 2,
+                "mode": "bundingCircle",
+            },
+        )
+        assert r.status_code == 400
+
+        r = requests.post(
+            "http://localhost:3000/aggregate",
+            json={
+                "points": [{"lat": 1, "lng": 1}, {"lat": 2, "lng": 2}],
+                "shrink": 0,
+                "mode": "bundingCircle",
+            },
+        )
+        assert r.status_code == 400
 
 
 class TestPOI(unittest.TestCase):
@@ -32,7 +81,7 @@ class TestPOI(unittest.TestCase):
         source_id = 12345678
 
         r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200
 
         r = requests.post(
             "http://localhost:3000/poi/create",
@@ -51,7 +100,7 @@ class TestPOI(unittest.TestCase):
         assert r.json()["data"]["source_id"] == source_id
 
         r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200
 
     def test_info(self):
         source_id = 12345678
@@ -67,7 +116,7 @@ class TestPOI(unittest.TestCase):
         assert r.json()["data"]["lat"] == 1
 
         r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200
 
         r = requests.get("http://localhost:3000/poi/info?source_id=%s" % source_id)
         assert r.status_code == 404
@@ -76,7 +125,7 @@ class TestPOI(unittest.TestCase):
         source_id = 12345678
 
         r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200
 
         r = requests.post(
             "http://localhost:3000/poi/create",
@@ -91,11 +140,11 @@ class TestPOI(unittest.TestCase):
         assert r.status_code == 200
 
         r = requests.get("http://localhost:3000/poi/info?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200
         assert r.json()["data"]["lat"] == 2
 
         r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200
 
         r = requests.post(
             "http://localhost:3000/poi/update?source_id=%s" % source_id,
@@ -104,11 +153,11 @@ class TestPOI(unittest.TestCase):
         assert r.status_code == 200
 
         r = requests.get("http://localhost:3000/poi/info?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200
         assert r.json()["data"]["lat"] == 3
 
         r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200
 
     def test_remove(self):
         source_id = 12345678
@@ -120,10 +169,10 @@ class TestPOI(unittest.TestCase):
         assert r.status_code == 200
 
         r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200
 
         r = requests.get("http://localhost:3000/poi/%s" % source_id)
-        assert r.status_code, 404
+        assert r.status_code == 404
 
         r = requests.post("http://localhost:3000/poi/delete?source_id=%s" % source_id)
-        assert r.status_code, 200
+        assert r.status_code == 200

@@ -50,47 +50,40 @@ app.get("/toolkit", async (req, res) => {
 
 app.get("/poi/list", async (req, res) => {
     let { pageNum, pageSize } = req.query;
-    pageSize = parseInt(pageSize) || 20;
+    pageSize = parseInt(pageSize) || 1000;
     pageNum = parseInt(pageNum) || 1;
     let { pois, totalCount } = await POI.list(pageNum - 1, pageSize);
-    pois.map((i) => {
-        if (!i.source_type) delete i.source_type;
-    });
     res.json({ code: 200, data: { pageNum, pageSize, totalCount, pois } });
 });
 
 app.post("/poi/create", async (req, res) => {
-    let { source_id, source_type, tags, lat, lng } = req.body;
+    let { source_id, tags, lat, lng } = req.body;
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
 
-    let id = await POI.create(source_id, source_type, tags, lat, lng);
+    let id = await POI.create(source_id, tags, lat, lng);
     if (id) res.json({ data: { source_id }, code: 200 });
     else res.status(409).end("source_id already exist");
 });
 
 app.post("/poi/delete", async (req, res) => {
-    let { source_type, source_id } = req.query;
-    await POI.remove(source_id, source_type);
+    await POI.remove(req.query.source_id);
     res.json({ code: 200 });
 });
 
 app.post("/poi/update", async (req, res) => {
-    let { source_id, source_type, tags, lat, lng } = req.body;
+    let { source_id, tags, lat, lng } = req.body;
     if (!source_id || isNaN(lat) || isNaN(lng))
         return res.status(400).end("wrong params");
-    POI.update(source_id, source_type, tags, lat, lng);
+    await POI.update(source_id, tags, lat, lng);
     return res.json({ code: 200 });
 });
 
 app.get("/poi/info", async (req, res) => {
-    let { source_type, source_id } = req.query;
-    let poi = await POI.info(source_id, source_type);
+    let poi = await POI.info(req.query.source_id);
 
-    if (poi) {
-        delete poi.source_type;
-        res.json({ code: 200, data: poi });
-    } else res.status(404).end(`source_id ${source_id} not exist`);
+    if (poi) res.json({ code: 200, data: poi });
+    else res.status(404).end(`source_id ${req.query.source_id} not exist`);
 });
 
 app.post("/admin/create-table", async (req, res) => {
@@ -98,7 +91,7 @@ app.post("/admin/create-table", async (req, res) => {
     res.end();
 });
 
-app.post("/admin/import-china-bundary", async (req, res) => {
+app.post("/admin/import-bundary", async (req, res) => {
     await admin.importRegionBundary();
     res.end();
 });
@@ -137,7 +130,7 @@ app.post("/aggregate", async (req, res) => {
         return res.status(400).end("illegal: pageNum & pageSize wrong");
     if (["auto", "polylineBuffer", "bundingCircle"].indexOf(mode) < 0)
         return res.status(400).end("illegal: wrong mode ");
-    if (shrink > 1 || shrink < 0)
+    if (shrink > 1 || shrink <= 0)
         return res.status(400).end("illegal: shrink should be > 0 and < 1");
 
     for (let i = 0; i < points.length; i++) {
