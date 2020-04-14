@@ -103,7 +103,7 @@ app.post("/admin/import-china-bundary", async (req, res) => {
     res.end();
 });
 
-app.post("/admin/import-scennic-points", async (req, res) => {
+app.post("/admin/import-scenic-points", async (req, res) => {
     await admin.importScenicPoints();
     res.end();
 });

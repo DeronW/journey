@@ -16,7 +16,7 @@ function importChinaBundary() {
 
 function importScenicPoints() {
     if (!confirm("import scenic points?")) return;
-    operate("/admin/import-scennic-points");
+    operate("/admin/import-scenic-points");
 }
 
 function operate(path) {

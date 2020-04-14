@@ -270,7 +270,7 @@ curl -X POST "http://localhost:3000/poi/delete?source_id=1"
 -   pageNum：结果分页中的页数
 -   pageSize：结果分页中每页的结果数量
 -   distance：路径附近景点的搜索距离
--   mode：图形检索模式， polylineBuffer/bundingCircle 只能是这三个中的一个
+-   mode：图形检索模式， polylineBuffer/bundingCircle ，默认为polylineBuffer
 -   filter：用于过滤标签，只选择完全等于标签的景点对象，可选参数，默认 {}
 -   filterType: 标记 filter 的检索关系，只有两种类型 or 或者 and，默认是 and
 -   shrink: 曲线型缩放比例，必须大于 0，并且小于或等于 1，比例参照物是起点和终点的距离
