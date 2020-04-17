@@ -78,11 +78,9 @@ sudo su
 apt update
 apt -y upgrade
 apt -y install docker docker-compose
-```
 
-```shell
 cd /srv
-if [ ! -d "./poi" ];then
+if [ -d "./poi" ];then
     rm -r poi
 fi
 mkdir poi
