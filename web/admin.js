@@ -1,5 +1,6 @@
 const { exist, none, many } = require("./db");
 const utils = require("./utils");
+const csv = require("fast-csv");
 
 async function querySetup() {
     let hasTable = await exist(
@@ -52,23 +53,37 @@ async function createTable() {
     }
 }
 
-async function importScenicPoints() {
-    let rows = await utils.getPOIs();
+async function importScenicPoints(buffer, erase, overwrite) {
+    let rows = await new Promise((resolve, reject) => {
+        let rows = [];
+        csv.parseString(buffer, { headers: true })
+            .on("error", (err) => reject(err))
+            .on("data", (row) => rows.push(row))
+            .on("end", () => resolve(rows));
+    });
 
-    await none(`Delete From POI`);
+    if (erase) await none(`Delete From POI`);
 
     let values = rows
         .map((i) => {
             let { source_id, tags, lat, lng } = i;
             let point = `ST_GeomFromText('POINT(${lng} ${lat})', 4326)`;
-            return `(${source_id}, '${tags}', ${point}, now())`;
+            return `(${source_id}, '${tags || "{}"}', ${point}, now())`;
         })
         .join(",");
+
+    let merge = "Nothing";
+    if (overwrite)
+        merge =
+            "Update Set tags=excluded.tags, point=excluded.point, updated_at=now() ";
 
     await none(`
     Insert Into POI (
         source_id, tags, point, updated_at
-    ) Values ${values}`);
+    ) Values ${values}
+    On Conflict(source_id)
+    Do ${merge} 
+    `);
     await none(`Update Setup Set complete=true Where phase='points'`);
 }
 
@@ -110,6 +125,7 @@ async function initialize() {
     let initialization = await querySetup();
     if (initialization.tableCreated == false) {
         await createTable();
+        await importRegionBundary();
     }
 }
 // check initialze status, run it when server startd

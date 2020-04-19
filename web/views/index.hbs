@@ -72,7 +72,10 @@
                             <s>3. Import Scenic Points</s>
                             {{else}}
                             3. Import Scenic Points
-                            <button class="btn btn-sm btn-link" onClick="importScenicPoints()"> Do it </button>
+                            <button class="btn btn-sm btn-link" data-toggle="modal" data-target="#staticBackdrop">
+                                Do it
+                            </button>
+
                             {{/if}}
 
                             {{/with}}
@@ -132,6 +135,50 @@
                 </div>
 
             </div>
+        </div>
+    </div>
+
+
+    <!-- Modal -->
+    <div class="modal fade" id="staticBackdrop" data-backdrop="static" role="dialog">
+        <div class="modal-dialog" role="document">
+            <form method="POST" action="/admin/import-scenic-points" enctype="multipart/form-data">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="staticBackdropLabel">Import Sceneic Data</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>CSV file content format (Mention quotation marks!)</label>
+                            <pre>
+source_id,lat,lng,tags
+17517,39.918058,116.397026,"{""city"": ""beijing""}"
+17518,39.881949,116.410886,"{""city"": ""beijing""}"
+17519,39.99243,116.272876,"{""city"": ""beijing""}"
+                        </pre>
+                            <input name="points" type="file" class="form-control-file" required>
+                        </div>
+
+                        <div class="form-group form-check">
+                            <input type="checkbox" class="form-check-input" id="input1" name="erase" checked>
+                            <label class="form-check-label" for="input1">delete origin data</label>
+                        </div>
+                        <div class="form-group form-check">
+                            <input type="checkbox" class="form-check-input" id="input2" name="overwrite" checked>
+                            <label class="form-check-label" for="input2">overwrite duplicated source_id</label>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </div>
+                </div>
+
+            </form>
         </div>
     </div>
 

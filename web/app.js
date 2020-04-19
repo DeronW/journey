@@ -1,6 +1,5 @@
 const express = require("express");
 require("express-async-errors");
-const bodyParser = require("body-parser");
 const log4js = require("log4js");
 const path = require("path");
 const MAINLAND_BUNDARY = require("./fixtures/mainland");
@@ -19,7 +18,12 @@ app.engine("html", require("hbs").__express);
 app.disable("view cache");
 app.use("/static", express.static(path.join(__dirname, "static")));
 
-app.use(bodyParser.json()); // for parsing application/json
+app.use(express.json()); // for parsing application/json
+
+const multer = require("multer");
+const storage = multer.memoryStorage();
+let upload = multer({ storage: storage });
+
 app.use(
     log4js.connectLogger(logger, {
         level: "info",
@@ -96,10 +100,15 @@ app.post("/admin/import-bundary", async (req, res) => {
     res.end();
 });
 
-app.post("/admin/import-scenic-points", async (req, res) => {
-    await admin.importScenicPoints();
-    res.end();
-});
+app.post(
+    "/admin/import-scenic-points",
+    upload.single("points"),
+    async (req, res) => {
+        let { erase, overwrite } = req.body;
+        await admin.importScenicPoints(req.file.buffer, erase, overwrite);
+        res.redirect("/toolkit");
+    }
+);
 
 app.post("/admin/reset-all", async (req, res) => {
     await admin.resetAll();
