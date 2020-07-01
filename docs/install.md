@@ -39,7 +39,7 @@ mkdir poi
 
 把项目代码中 `project` 目录中的文件(docker-compose.yml 和 postgres.env 两个文件)，拷贝到上一步新建的 poi 目录中。修改`docker-compose.yml`中的{TAG}字段，改为想要运行的项目的版本。
 
-版本选择，参考 docker hub 地址：https://hub.docker.com/repository/docker/delongw/tortuous ，推荐使用其中的最新版
+版本选择，参考 docker hub 地址：https://hub.docker.com/repository/docker/delongw/journey ，推荐使用其中的最新版
 
 ### 启动服务
 
@@ -67,7 +67,7 @@ docker-compose ps
 
 # Quick Deploy
 
-快速安装服务，一键部署。首先申请一个独立 ECS 服务器，使用 Ubuntu18.04 版本的操作系统, 然后运行以下脚本服务。**注意**，运行前要把`web`服务的镜像地址参数改为对应的镜像版本。这里可以使用 `delongw/tortuous:1.0`
+快速安装服务，一键部署。首先申请一个独立 ECS 服务器，使用 Ubuntu18.04 版本的操作系统, 然后运行以下脚本服务。**注意**，运行前要把`web`服务的镜像地址参数改为对应的镜像版本。这里可以使用 `delongw/journey:1.0`
 
 ### Ubuntu 版本
 
@@ -89,7 +89,7 @@ cat > docker-compose.yml << EOF
 version: "3"
 services:
     web:
-        image: delongw/tortuous:1.0
+        image: delongw/journey:1.0
         restart: always
         ports:
             - "3000:3000"
@@ -141,7 +141,7 @@ cat > docker-compose.yml << EOF
 version: "3"
 services:
     web:
-        image: delongw/tortuous:1.0
+        image: delongw/journey:1.0
         restart: always
         ports:
             - "3000:3000"
@@ -180,7 +180,7 @@ docker run --name gis -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d post
 然后运行 web 服务镜像，此处需要配置环境变量，并选择指定的 web 服务镜像版本
 
 ```shell
-docker run --name poi -p 3000:3000 -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_HOST=localhost -d delongw/tortuous:1.0
+docker run --name poi -p 3000:3000 -e POSTGRES_PASSWORD=mysecretpassword -e POSTGRES_HOST=localhost -d delongw/journey:1.0
 ```
 
 ### 源码安装

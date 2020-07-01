@@ -1,7 +1,7 @@
 version: "3"
 services:
     web:
-        image: delongw/tortuous:${TAG}
+        image: delongw/journey:${TAG}
         restart: always
         ports: 
             - "3000:3000"

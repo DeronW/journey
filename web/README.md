@@ -11,10 +11,10 @@ docker run --name gis -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d post
 ```shell
 
 cd web
-set tag 1.1
-docker build --tag tortuous .
-docker tag tortuous delongw/tortuous:$tag
-docker push delongw/tortuous:$tag
+set tag 1.0
+docker build --tag journey .
+docker tag journey delongw/journey:$tag
+docker push delongw/journey:$tag
 
 ```
 
@@ -24,5 +24,5 @@ https://docs.docker.com/engine/reference/commandline/image_save/
 
 ```shell
 set tag 1.0
-docker save -o ~/Downloads/image.$tag.tar delongw/tortuous:$tag
+docker save -o ~/Downloads/image.$tag.tar delongw/journey:$tag
 ```
